@@ -1,0 +1,66 @@
+name: claude
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+# The Claude GitHub App token, obtained through the OIDC exchange, posts the
+# comments and pushes branches. The workflow token only serves `gh` in the
+# issue tracker skills, so it gets nothing beyond issue access.
+permissions:
+  contents: read
+  id-token: write
+  issues: write
+
+jobs:
+  claude:
+    # Only a trusted human comment that mentions the agent reaches the model.
+    # Any other event finishes here without calling the provider.
+    if: >-
+      contains(github.event.comment.body, '@claude') &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association) &&
+      github.event.comment.user.type != 'Bot'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: claude-${{ github.event.issue.number || github.event.pull_request.number }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Install PHP Dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Generate Project Skills
+        run: |
+          cp .env.example .env
+          php artisan key:generate --no-interaction
+          php artisan boost:update --no-interaction
+
+      - name: Run Claude
+        uses: anthropics/claude-code-action@c0949c50a78c1ec8ce2647db36629b870e715d0c # v1.0.268
+        env:
+          GH_TOKEN: ${{ github.token }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          trigger_phrase: '@claude'
+          show_full_output: false
+          plugin_marketplaces: https://github.com/anthropics/claude-plugins-official.git
+          plugins: mattpocock-skills@claude-plugins-official
+          claude_args: >-
+            --model claude-sonnet-5-5
+            --allowedTools "Skill,Edit,Write,Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh issue create:*),Bash(gh issue comment:*),Bash(gh issue edit:*),Bash(gh pr view:*),Bash(gh pr diff:*)"
