@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.2](https://github.com/MaratSafiullin/ai-for-developers-project-387/compare/v0.1.1...v0.1.2) (2026-11-05)
+
+
+### Documentation
+
+* перевести трекер на новый репозиторий и сослаться на первый проект ([#1](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/1)) ([84c2725](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/84c2725e72978a28d793bc6c40235584c8346919))
+* указать адрес нового сервиса на Render ([#4](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/4)) ([02287bc](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/02287bc25e2276d71c2253ca72a1a72fd5e222fd))
+* указать адрес нового сервиса на Render ([#4](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/4)) ([4cb049d](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/4cb049d9254cca4c4f91dc06c3bc711beb365ddc))
+
 ## [0.1.1](https://github.com/MaratSafiullin/ai-for-developers-project-386/compare/v0.1.0...v0.1.1) (2026-11-05)
 
 
