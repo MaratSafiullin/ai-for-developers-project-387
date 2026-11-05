@@ -2,7 +2,7 @@
 # Deploys run only from the release-please workflow through the deploy hook.
 services:
     - type: web
-      name: ai-for-developers-project-386
+      name: ai-for-developers-project-387
       runtime: docker
       plan: free
       region: frankfurt

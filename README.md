@@ -1,13 +1,25 @@
-# Календарь звонков
+# Календарь звонков (продолжение)
 
-[![hexlet-check](https://github.com/MaratSafiullin/ai-for-developers-project-386/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/MaratSafiullin/ai-for-developers-project-386/actions)
+[![hexlet-check](https://github.com/MaratSafiullin/ai-for-developers-project-387/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/MaratSafiullin/ai-for-developers-project-387/actions)
 
-Разработайте совместно с ИИ сервис для бронирования календаря
+Интегрируйте работу агентов в GitHub проект
 
 Учебный проект Хекслета: https://ru.hexlet.io/programs/ai-for-developers
 Как это должно работать: https://files.hexlet.app/a/2ipc5m
 
-**Демо:** https://ai-for-developers-project-386-w6wf.onrender.com (бесплатный тариф Render: первый запрос после простоя открывается долго, данные периодически сбрасываются, см. [Деплой](#деплой)).
+**Демо:** https://ai-for-developers-project-386-w6wf.onrender.com (бесплатный тариф Render: первый запрос после простоя открывается долго, данные периодически сбрасываются, см. [Деплой](#деплой)). Пока это деплой из первого проекта, свой сервис для этого репозитория появится отдельной задачей. Запустить приложение локально: [Установка](#установка) и [Использование](#использование).
+
+## Исходный проект
+
+Приложение перенесено из первого проекта «Календарь звонков» с заданием «Разработайте совместно с ИИ сервис для бронирования календаря»: [MaratSafiullin/ai-for-developers-project-386](https://github.com/MaratSafiullin/ai-for-developers-project-386). Перенос сделан без истории коммитов ([#1](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/1)), история и обсуждения остались там:
+
+- [Каркас приложения](https://github.com/MaratSafiullin/ai-for-developers-project-386/issues/1): спецификация каркаса и её тикеты #2–#8
+- [Карта: проектирование бронирования](https://github.com/MaratSafiullin/ai-for-developers-project-386/issues/10): решения #11–#17 (сущности и API, модель слотов, конфликты, страницы и SDK, генераторы контракта, тестирование, валидация)
+- [Спецификация: бронирование звонков](https://github.com/MaratSafiullin/ai-for-developers-project-386/issues/18): тикеты реализации #19–#24
+- Инфраструктурные тикеты: [release-please](https://github.com/MaratSafiullin/ai-for-developers-project-386/issues/25), [правило языка](https://github.com/MaratSafiullin/ai-for-developers-project-386/issues/29), [Docker и деплой на Render](https://github.com/MaratSafiullin/ai-for-developers-project-386/issues/34)
+- [Все issues](https://github.com/MaratSafiullin/ai-for-developers-project-386/issues?q=is%3Aissue) и [pull requests](https://github.com/MaratSafiullin/ai-for-developers-project-386/pulls?q=is%3Apr) первого проекта
+
+Решения, которые действуют и здесь, лежат в репозитории: словарь предметной области `GLOSSARY.md` и ADR в `docs/adr/`. Записи `CHANGELOG.md` до версии 0.1.1 ссылаются на коммиты и issues первого проекта.
 
 ## Сценарий использования
 
@@ -61,8 +73,8 @@
 Нужны PHP 8.5 с Composer и Node.js 22 (версия в `.nvmrc`) с npm.
 
 ```bash
-git clone https://github.com/MaratSafiullin/ai-for-developers-project-386.git
-cd ai-for-developers-project-386
+git clone https://github.com/MaratSafiullin/ai-for-developers-project-387.git
+cd ai-for-developers-project-387
 composer setup
 ```
 
@@ -184,13 +196,13 @@ php artisan boost:update
 
 1. Установите плагин: `/plugin install render@claude-plugins-official`, затем перезапустите Claude Code в проекте. Строка `"enabledPlugins": { "render@claude-plugins-official": true }` в закоммиченном `.claude/settings.json` включает плагин для проекта, но сама его не устанавливает и не предлагает установить.
 2. Выполните `/mcp`, выберите сервер `render` и пройдите вход в браузере под своим аккаунтом Render.
-3. Попросите агента, например: «покажи последние деплои сервиса ai-for-developers-project-386». При первом обращении он спросит, какое рабочее пространство Render использовать: выберите то, где создан сервис.
+3. Попросите агента, например: «покажи последние деплои сервиса ai-for-developers-project-387». При первом обращении он спросит, какое рабочее пространство Render использовать: выберите то, где создан сервис.
 
 ## Документация
 
 Документация пишется на русском, код (включая комментарии и названия тестов) и инструкции для агентов — на английском. Правило целиком: `.ai/guidelines/language.md`.
 
-- [GitHub Issues](https://github.com/MaratSafiullin/ai-for-developers-project-386/issues): спеки и тикеты текущей работы
+- [GitHub Issues](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues): спеки и тикеты текущей работы, спеки первого проекта см. [Исходный проект](#исходный-проект)
 - `docs/agents/`: настройки скиллов агентов (трекер, лейблы триажа, доменные доки)
 - `docs/adr/`: архитектурные решения
 

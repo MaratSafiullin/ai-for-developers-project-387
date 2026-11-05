@@ -2,7 +2,7 @@
 
 ## Issue tracker
 
-Issues live in GitHub Issues for MaratSafiullin/ai-for-developers-project-386 (via `gh`). See `docs/agents/issue-tracker.md`.
+Issues live in GitHub Issues for MaratSafiullin/ai-for-developers-project-387 (via `gh`). See `docs/agents/issue-tracker.md`.
 
 ## Triage labels
 
