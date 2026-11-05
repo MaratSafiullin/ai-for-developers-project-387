@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+#
+# Checks the first line of a commit message against Conventional Commits.
+# Keep the list of types in sync with .ai/guidelines/conventional-commits.md.
+
+set -euo pipefail
+
+# Git runs this hook before stripping comments and blank lines, so skip them here.
+subject="$(grep -v -m 1 -E '^[[:space:]]*(#|$)' "$1" || true)"
+subject="${subject%$'\r'}"
+subject="${subject%"${subject##*[![:space:]]}"}"
+
+if [[ "$subject" =~ ^(Merge\ |Revert\ \"|fixup!\ |squash!\ |amend!\ ) ]]; then
+    exit 0
+fi
+
+# release-please writes the release commit itself, in English.
+if [[ "$subject" =~ ^chore(\([a-z0-9._/-]+\))?:\ release\ v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    exit 0
+fi
+
+types='feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert'
+
+# The description is in Russian. Letters are listed one by one, because a range
+# like [а-я] or [[:lower:]] depends on the locale and breaks under LC_ALL=C.
+first='а|б|в|г|д|е|ё|ж|з|и|й|к|л|м|н|о|п|р|с|т|у|ф|х|ц|ч|ш|щ|ъ|ы|ь|э|ю|я|[0-9]'
+pattern="^(${types})(\([a-z0-9._/-]+\))?!?: (${first})(.*[^.])?$"
+
+if [[ "$subject" =~ $pattern ]]; then
+    exit 0
+fi
+
+cat >&2 <<EOF
+Commit message does not follow Conventional Commits:
+
+    $subject
+
+Expected: <type>[optional scope][!]: <description>
+Types: ${types//|/, }
+The type and scope are in English. The description is in Russian, in the
+infinitive, starts with a lowercase Cyrillic letter or a digit, and has no
+trailing period.
+Example: feat(api): вернуть 404 для неизвестного слота
+
+See .ai/guidelines/conventional-commits.md
+EOF
+
+exit 1
