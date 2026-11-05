@@ -1,0 +1,19 @@
+{
+    "permissions": {
+        "allow": [
+            "WebFetch(domain:laravel.com)",
+            "WebFetch(domain:inertiajs.com)",
+            "WebFetch(domain:pestphp.com)"
+        ],
+        "deny": [
+            "Edit(./.githooks/**)",
+            "Edit(./.junie/**)",
+            "Edit(./vendor/**)",
+            "Edit(./node_modules/typescript/**)",
+            "Edit(./node_modules/.bin/**)"
+        ]
+    },
+    "enabledPlugins": {
+        "render@claude-plugins-official": true
+    }
+}

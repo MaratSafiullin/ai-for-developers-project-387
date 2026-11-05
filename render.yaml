@@ -1,0 +1,20 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Deploys run only from the release-please workflow through the deploy hook.
+services:
+    - type: web
+      name: ai-for-developers-project-386
+      runtime: docker
+      plan: free
+      region: frankfurt
+      dockerfilePath: ./Dockerfile
+      healthCheckPath: /up
+      autoDeployTrigger: 'off'
+      envVars:
+          - key: APP_ENV
+            value: production
+          - key: APP_DEBUG
+            value: 'false'
+          - key: APP_URL
+            value: https://ai-for-developers-project-386-w6wf.onrender.com
+          - key: APP_KEY
+            generateValue: true

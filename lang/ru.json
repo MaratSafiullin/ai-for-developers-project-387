@@ -1,0 +1,8 @@
+{
+    "The given data was invalid.": "Данные заполнены неверно.",
+    "Meeting type not found.": "Тип встречи не найден.",
+    "This time is not available for booking. Choose a slot from the list.": "Это время недоступно для записи. Выберите слот из списка.",
+    "This time is already taken. Choose another slot.": "Это время уже занято. Выберите другой слот.",
+    "(and :count more error)": "(и ещё :count ошибка)",
+    "(and :count more errors)": "(и ещё :count ошибка)|(и ещё :count ошибки)|(и ещё :count ошибок)"
+}

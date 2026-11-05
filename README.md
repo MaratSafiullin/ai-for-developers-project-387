@@ -1,29 +1,198 @@
-# Календарь звонков (продолжение)
+# Календарь звонков
 
+[![hexlet-check](https://github.com/MaratSafiullin/ai-for-developers-project-386/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/MaratSafiullin/ai-for-developers-project-386/actions)
 
-[![hexlet-check](https://github.com/MaratSafiullin/ai-for-developers-project-387/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/MaratSafiullin/ai-for-developers-project-387/actions)
-
-Интегрируйте работу агентов в GitHub проект
+Разработайте совместно с ИИ сервис для бронирования календаря
 
 Учебный проект Хекслета: https://ru.hexlet.io/programs/ai-for-developers
 Как это должно работать: https://files.hexlet.app/a/2ipc5m
 
+**Демо:** https://ai-for-developers-project-386-w6wf.onrender.com (бесплатный тариф Render: первый запрос после простоя открывается долго, данные периодически сбрасываются, см. [Деплой](#деплой)).
+
+## Сценарий использования
+
+**Владелец**
+
+1. Открывает раздел управления и создаёт тип встречи «Знакомство»: длительность 30 минут, описание «Короткий созвон, чтобы познакомиться и обсудить задачу».
+2. Тип встречи появляется в каталоге, доступном гостям.
+
+**Гость**
+
+3. Заходит на сервис без регистрации и открывает каталог типов встреч.
+4. Выбирает «Знакомство».
+5. Видит календарь на ближайшие 14 дней и выбирает ближайший рабочий день.
+6. Из списка свободных слотов выбирает 14:00–14:30.
+7. Вводит имя «Анна» и подтверждает запись.
+8. Видит экран подтверждения: тип встречи, дата, время 14:00–14:30, имя.
+
+**Владелец**
+
+9. Открывает список предстоящих встреч и видит новую запись: дата, 14:00–14:30, «Знакомство», Анна. Список общий для всех типов встреч и отсортирован по времени, ближайшие сверху.
+
+> Занятый слот больше не показывается гостям, в том числе для других типов встреч: интервалы не могут пересекаться даже частично. Следующая встреча может начинаться ровно в момент окончания предыдущей.
+
+### Обязательные функции
+
+- Создание типов встреч с названием, описанием и длительностью
+- Каталог типов встреч для гостя
+- Календарь свободных слотов на 14 дней вперёд, длительность слота равна длительности типа встречи
+- Запись на свободный слот по имени гостя
+- Список предстоящих встреч всех типов для владельца
+- Запрет пересечения встреч, в том числе разных типов и при одновременных запросах
+
+### Ограничения
+
+- Нет авторизации и личных кабинетов
+- Нет интеграций с внешними календарями и уведомлений
+- Нельзя отменить или перенести запись, нельзя редактировать или удалять типы встреч
+
 ## Стек
 
-- Разное
+Проект создан из [Laravel React Starter Kit](https://laravel.com/docs/starter-kits).
+
+- **Бэкенд:** PHP 8.5, Laravel 13, [Inertia](https://inertiajs.com) v3. Страницы рендерятся как React-компоненты через `Inertia::render()`.
+- **Фронтенд:** React 19, TypeScript, Tailwind CSS 4, shadcn/ui. Маршруты для фронта генерирует [Wayfinder](https://github.com/laravel/wayfinder).
+- **Сборка:** Vite+ (`vp`): сборщик, линтер и форматтер в одном, настраивается в `vite.config.ts`.
+- **База данных:** SQLite. Сессии, кеш и очередь хранятся в БД, отдельные сервисы не нужны.
+- **Тесты и качество:** Pest, Pint, Larastan (level 7), `tsc`.
 
 ## Установка
 
-<!-- Опишите установку: клонирование, зависимости, переменные окружения -->
+Нужны PHP 8.5 с Composer и Node.js 22 (версия в `.nvmrc`) с npm.
 
 ```bash
-git clone https://github.com/MaratSafiullin/ai-for-developers-project-387.git
-cd ai-for-developers-project-387
+git clone https://github.com/MaratSafiullin/ai-for-developers-project-386.git
+cd ai-for-developers-project-386
+composer setup
 ```
+
+`composer setup` ставит PHP- и npm-зависимости, подключает git-хуки из `.githooks`, создаёт `.env` из `.env.example`, генерирует ключ приложения, применяет миграции к SQLite, ставит Chromium для e2e-тестов Playwright и собирает фронтенд.
 
 ## Использование
 
 <!-- Добавьте примеры запуска и запись asciinema — именно это смотрит работодатель -->
+
+```bash
+composer dev
+```
+
+Команда запускает в одном окне веб-сервер на http://localhost:8000, воркер очереди, просмотр логов (`pail`) и Vite с горячей перезагрузкой.
+
+| Команда             | Что делает                                        |
+| ------------------- | ------------------------------------------------- |
+| `composer dev`      | запуск для разработки                             |
+| `npm run build`     | прод-сборка фронтенда в `public/build`            |
+| `php artisan test`  | тесты Pest                                        |
+| `npm run test:e2e`  | сборка фронтенда и e2e-сценарий в Playwright      |
+| `composer lint`     | автоформатирование PHP (Pint)                     |
+| `npm run check:fix` | автоисправление линтера и форматирование TS/React |
+| `composer ci:check` | все проверки разом (см. ниже)                     |
+
+## Проверки и CI
+
+`composer ci:check` — единая команда проверок, локально и в CI:
+
+1. `npm run check`: линтер и форматтер Vite+ (предупреждения считаются ошибками)
+2. `npm run contract:check`: OpenAPI и SDK пересобираются из `contract/main.tsp` и совпадают с закоммиченными
+3. `npm run types:check`: проверка типов TypeScript
+4. `composer lint:check`: стиль PHP (Pint)
+5. `composer types:check`: статический анализ PHP (Larastan)
+6. `php artisan test`: тесты Pest
+7. `npm run test:e2e`: сборка фронтенда и e2e-сценарий в Chromium через Playwright
+
+e2e-тест (`tests/e2e/`) проходит [сценарий использования](#сценарий-использования) против настоящего сервера: владелец создаёт тип «Знакомство», гость выбирает первую дату и первый слот, вводит «Анна» и видит подтверждение, владелец видит встречу в списке предстоящих. Время и дата сверяются с выбранным слотом, а не с фиксированным временем. Перед прогоном Playwright (`playwright.config.ts`) пересоздаёт файл SQLite `database/e2e.sqlite`, применяет к нему миграции без сидера и запускает `php artisan serve` на порту 8010. Рабочая база из `.env` не затрагивается. Конфликты слотов и граничные случаи проверяют тесты Pest, в e2e они не повторяются.
+
+Если Chromium не установлен (например, на клоне, где `composer setup` выполнялся раньше), поставьте его: `npx playwright install chromium`. При падении трейс прогона сохраняется в `test-results/` и открывается командой `npx playwright show-trace <путь к trace.zip>`.
+
+GitHub Actions (`.github/workflows/tests.yml`) на каждый push в `main` и pull request выполняет `composer setup`, ставит системные зависимости Chromium (`npx playwright install --with-deps chromium`) и запускает `composer ci:check`. Параллельно job `docker` собирает Docker-образ, запускает его с `PORT=8080` и ждёт ответа 200 от главной страницы.
+
+Коммиты пишутся по [Conventional Commits](https://www.conventionalcommits.org/ru/v1.0.0/): тип и scope на английском, описание на русском в инфинитиве, например `feat(api): добавить календарь свободных слотов`. Формат проверяет хук `.githooks/commit-msg`. На клоне, где `composer setup` уже выполнялся до появления хука, подключите его один раз: `git config core.hooksPath .githooks`.
+
+## Релизы
+
+Релизы выпускает [release-please](https://github.com/googleapis/release-please) по истории коммитов, руками версию и CHANGELOG не правят.
+
+1. После каждого push в `main` workflow `.github/workflows/release-please.yml` открывает или обновляет релизный PR `chore(main): release X.Y.Z`. В нём следующая версия и пополненный `CHANGELOG.md`.
+2. Версию определяют типы коммитов с прошлого релиза. Пока проект в `0.x`, `feat` поднимает минорную версию, `fix` — патч, ломающее изменение (`!`) — тоже минорную. Первый релиз — `0.1.0`.
+3. Когда релизный PR сливают, появляются тег `vX.Y.Z` и GitHub Release с теми же заметками.
+
+В CHANGELOG попадают `feat`, `fix`, `perf`, `revert`, `refactor` и `docs`; `chore`, `ci`, `build`, `test` и `style` скрыты. Настройки лежат в `release-please-config.json`, текущая версия — в `.release-please-manifest.json`.
+
+Релизный PR создаётся встроенным `GITHUB_TOKEN`, поэтому проверки `tests.yml` на нём сами не запускаются. Чтобы workflow мог открывать PR, в настройках репозитория (Settings → Actions → General) должна быть включена опция «Allow GitHub Actions to create and approve pull requests».
+
+## Деплой
+
+Приложение работает на [Render](https://render.com) по адресу https://ai-for-developers-project-386-w6wf.onrender.com. Сервис описан в Blueprint `render.yaml`: один web-сервис из `Dockerfile`, бесплатный тариф, регион Frankfurt, проверка здоровья по `/up`.
+
+### Релиз → деплой
+
+1. Сливают релизный PR release-please, появляются тег и GitHub Release.
+2. В том же запуске `.github/workflows/release-please.yml` job `deploy` вызывает deploy hook Render с `ref=<SHA релизного коммита>`.
+3. Render собирает образ из этого коммита и переключает сервис на него.
+
+Обычные push в `main` сервис не трогают: в `render.yaml` стоит `autoDeployTrigger: off`. Исключение — изменения самого `render.yaml`: Render синхронизирует Blueprint и пересобирает сервис из текущего `main` (в списке деплоев триггер `blueprint_sync`). URL хука хранится в секрете репозитория `RENDER_DEPLOY_HOOK_URL`. Отдельный workflow `on: release` не подходит: релиз создаёт `GITHUB_TOKEN`, а его события не запускают другие workflow.
+
+Первичная настройка, один раз:
+
+1. В дашборде Render: New → Blueprint, выбрать этот репозиторий.
+2. Скопировать Deploy Hook из настроек сервиса в секрет репозитория `RENDER_DEPLOY_HOOK_URL` (Settings → Secrets and variables → Actions).
+
+`APP_KEY` генерирует Render (`generateValue`). Он выдаёт голую base64-строку, и entrypoint сам добавляет к ней префикс `base64:`.
+
+### Хранение данных
+
+База — файл SQLite внутри контейнера, постоянного диска нет. Все типы встреч и записи пропадают при каждом деплое, рестарте и засыпании сервиса. Бесплатный сервис засыпает после 15 минут без запросов, поэтому первый запрос после простоя ждёт запуска контейнера, это может занять около минуты.
+
+Сервер — `php artisan serve`, запросы он обрабатывает по одному. Двойное бронирование это не открывает: пересечения отсекает уникальный индекс в БД ([ADR 0002](docs/adr/0002-meeting-cells-unique-index.md)).
+
+### Локальный запуск образа
+
+```bash
+docker build -t calendar .
+docker run --rm -e PORT=8080 -p 8080:8080 calendar
+```
+
+Приложение откроется на http://localhost:8080. При старте `docker-entrypoint.sh` создаёт файл SQLite, применяет миграции и запускает сервер на `$PORT`. Если `APP_KEY` не передан, генерируется временный ключ.
+
+## Разработка с AI-агентами
+
+В проекте установлен [Laravel Boost](https://laravel.com/docs/boost). Он даёт агентам MCP-сервер (документация по версиям пакетов, схема БД, логи), набор skills и файл инструкций `AGENTS.md`.
+
+**`AGENTS.md` и `boost.json` закоммичены, но `AGENTS.md` генерируется, руками его не правят.** Boost собирает его из правил версий установленных пакетов и проектных правил в `.ai/guidelines/`, а `boost.json` хранит настройки генерации: агентов, skills, MCP. По ним файл воспроизводится одной командой.
+
+После клонирования поставьте локальные skills и конфиг MCP:
+
+```bash
+php artisan boost:update
+```
+
+`php artisan boost:install` нужен, только чтобы поменять агентов или набор skills: он перезапишет `boost.json`, который потом надо закоммитить.
+
+Проектные правила для агентов хранятся в закоммиченном каталоге `.ai/`:
+
+- `.ai/guidelines/*.md`: правила, которые вклеиваются в `AGENTS.md` при генерации
+- `.ai/skills/<name>/SKILL.md`: свои skills
+- `.ai/rules/`: правила с привязкой к путям
+
+После правки `.ai/guidelines/` запустите `php artisan boost:update`. При `composer update` Boost делает это сам. Обновлённый `AGENTS.md` закоммитьте.
+
+`CLAUDE.md`, `.mcp.json`, `.claude/`, `.junie/` и каталоги других агентов остаются локальными и лежат в `.gitignore`. Исключение — `.claude/settings.json`: это общие правила разрешений Claude Code для проекта, он закоммичен. `CLAUDE.md` не создавайте: при его наличии Boost пишет инструкции туда, а не в `AGENTS.md`.
+
+### MCP Render
+
+Сервисом на Render можно управлять из Claude Code через официальный плагин `render@claude-plugins-official`: смотреть деплои, логи и метрики. Ключей и токенов в репозитории нет, вход идёт через OAuth:
+
+1. Установите плагин: `/plugin install render@claude-plugins-official`, затем перезапустите Claude Code в проекте. Строка `"enabledPlugins": { "render@claude-plugins-official": true }` в закоммиченном `.claude/settings.json` включает плагин для проекта, но сама его не устанавливает и не предлагает установить.
+2. Выполните `/mcp`, выберите сервер `render` и пройдите вход в браузере под своим аккаунтом Render.
+3. Попросите агента, например: «покажи последние деплои сервиса ai-for-developers-project-386». При первом обращении он спросит, какое рабочее пространство Render использовать: выберите то, где создан сервис.
+
+## Документация
+
+Документация пишется на русском, код (включая комментарии и названия тестов) и инструкции для агентов — на английском. Правило целиком: `.ai/guidelines/language.md`.
+
+- [GitHub Issues](https://github.com/MaratSafiullin/ai-for-developers-project-386/issues): спеки и тикеты текущей работы
+- `docs/agents/`: настройки скиллов агентов (трекер, лейблы триажа, доменные доки)
+- `docs/adr/`: архитектурные решения
 
 ---
 
