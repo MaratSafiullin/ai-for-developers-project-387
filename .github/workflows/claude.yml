@@ -8,11 +8,12 @@ on:
 
 # The Claude GitHub App token, obtained through the OIDC exchange, posts the
 # comments and pushes branches. The workflow token only serves `gh` in the
-# issue tracker skills, so it gets nothing beyond issue access.
+# issue tracker skills, so it gets nothing beyond issue and pull request access.
 permissions:
   contents: read
   id-token: write
   issues: write
+  pull-requests: read
 
 jobs:
   claude:

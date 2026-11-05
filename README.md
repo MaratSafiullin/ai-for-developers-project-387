@@ -213,12 +213,14 @@ php artisan boost:update
 
 **Скиллы на раннере.** Раннер стартует с чистой машины, поэтому воркфлоу ставит скиллы сам:
 
-- плагин `mattpocock-skills` из каталога `claude-plugins-official` (входы `plugin_marketplaces` и `plugins`) — тот же, что установлен локально: `to-spec`, `to-tickets`, `implement-spec` и остальные. Вызываются по имени, например `@claude запусти скилл /mattpocock-skills:to-spec по обсуждению этого issue`;
+- плагин `mattpocock-skills` из каталога `claude-plugins-official` (входы `plugin_marketplaces` и `plugins`) — тот же, что установлен локально: `to-spec`, `to-tickets`, `implement-spec` и остальные;
 - проектные скиллы Boost: `composer install` и `php artisan boost:update` генерируют `.claude/skills/`, который не хранится в git.
+
+`to-spec`, `to-tickets` и `implement-spec` помечены `disable-model-invocation: true`: локально их запускает только набранная человеком slash-команда, а модель сама вызвать их не может. В GitHub текст комментария приходит агенту внутри промпта экшена, а не как slash-команда, поэтому такой скилл агент открывает как файл: находит `SKILL.md` в каталоге установленного плагина и выполняет его. Просите прямо, например: `@claude прочитай SKILL.md скилла to-spec из плагина mattpocock-skills и выполни его по обсуждению этого issue`. Скиллы без этой пометки (`tdd`, `code-review`, скиллы Boost) агент вызывает сам.
 
 Настройки трекера (`docs/agents/`) и правила (`AGENTS.md`) приходят вместе с кодом при checkout.
 
-**Права.** Комментарии и push делает токен Claude GitHub App: экшен получает его обменом OIDC-токена, поэтому у задания `id-token: write`. Токен воркфлоу (`GITHUB_TOKEN`) получает только `contents: read` и `issues: write`: он передаётся в `GH_TOKEN`, чтобы `gh` в скиллах трекера мог читать и создавать issues. У `actions/checkout` стоит `persist-credentials: false`, экшен сам настраивает push токеном приложения. Агенту разрешены только `Skill`, `Edit`, `Write` и формы `gh issue view|list|create|comment|edit` и `gh pr view|diff` (`claude_args --allowedTools`). Тесты и линтеры агент на раннере не запускает: его ветку проверяет `tests.yml` в PR, как любую другую.
+**Права.** Комментарии и push делает токен Claude GitHub App: экшен получает его обменом OIDC-токена, поэтому у задания `id-token: write`. Токен воркфлоу (`GITHUB_TOKEN`) получает только `contents: read`, `issues: write` и `pull-requests: read`: он передаётся в `GH_TOKEN`, чтобы `gh` в скиллах трекера мог читать и создавать issues и читать PR. У `actions/checkout` стоит `persist-credentials: false`, экшен сам настраивает push токеном приложения. Агенту разрешены только `Skill`, `Edit`, `Write` и формы `gh issue view|list|create|comment|edit` и `gh pr view|diff` (`claude_args --allowedTools`). Тесты и линтеры агент на раннере не запускает: его ветку проверяет `tests.yml` в PR, как любую другую.
 
 **Безопасность.** Воркфлоу не использует `pull_request_target`: комментарии из fork не получают ни ключа, ни права записи, потому что их авторы не проходят фильтр `author_association`. Ключ хранится только в секретах. Экшен закреплён хешем коммита, его обновления предлагает Dependabot.
 
@@ -226,7 +228,7 @@ php artisan boost:update
 
 **Первичная настройка**, один раз:
 
-1. Установить [Claude GitHub App](https://github.com/apps/claude) на этот репозиторий.
+1. Установить [Claude GitHub App](https://github.com/apps/claude) на этот репозиторий. Команду `/install-github-app` из Claude Code не используйте: она создаёт свой воркфлоу и PR, которые конфликтуют с `claude.yml`.
 2. Добавить ключ Anthropic API в секрет `ANTHROPIC_API_KEY` (Settings → Secrets and variables → Actions).
 
 ### MCP Render
