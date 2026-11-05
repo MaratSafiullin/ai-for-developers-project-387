@@ -7,7 +7,7 @@
 Учебный проект Хекслета: https://ru.hexlet.io/programs/ai-for-developers
 Как это должно работать: https://files.hexlet.app/a/2ipc5m
 
-**Демо:** https://ai-for-developers-project-386-w6wf.onrender.com (бесплатный тариф Render: первый запрос после простоя открывается долго, данные периодически сбрасываются, см. [Деплой](#деплой)). Пока это деплой из первого проекта, свой сервис для этого репозитория появится отдельной задачей. Запустить приложение локально: [Установка](#установка) и [Использование](#использование).
+**Демо:** https://ai-for-developers-project-387-22vi.onrender.com (бесплатный тариф Render: первый запрос после простоя открывается долго, данные периодически сбрасываются, см. [Деплой](#деплой)). Запустить приложение локально: [Установка](#установка) и [Использование](#использование).
 
 ## Исходный проект
 
@@ -18,6 +18,7 @@
 - [Спецификация: бронирование звонков](https://github.com/MaratSafiullin/ai-for-developers-project-386/issues/18): тикеты реализации #19–#24
 - Инфраструктурные тикеты: [release-please](https://github.com/MaratSafiullin/ai-for-developers-project-386/issues/25), [правило языка](https://github.com/MaratSafiullin/ai-for-developers-project-386/issues/29), [Docker и деплой на Render](https://github.com/MaratSafiullin/ai-for-developers-project-386/issues/34)
 - [Все issues](https://github.com/MaratSafiullin/ai-for-developers-project-386/issues?q=is%3Aissue) и [pull requests](https://github.com/MaratSafiullin/ai-for-developers-project-386/pulls?q=is%3Apr) первого проекта
+- Деплой первого проекта: https://ai-for-developers-project-386-w6wf.onrender.com
 
 Решения, которые действуют и здесь, лежат в репозитории: словарь предметной области `GLOSSARY.md` и ADR в `docs/adr/`. Записи `CHANGELOG.md` до версии 0.1.1 ссылаются на коммиты и issues первого проекта.
 
@@ -134,7 +135,7 @@ GitHub Actions (`.github/workflows/tests.yml`) на каждый push в `main` 
 
 ## Деплой
 
-Приложение работает на [Render](https://render.com) по адресу https://ai-for-developers-project-386-w6wf.onrender.com. Сервис описан в Blueprint `render.yaml`: один web-сервис из `Dockerfile`, бесплатный тариф, регион Frankfurt, проверка здоровья по `/up`.
+Приложение работает на [Render](https://render.com) по адресу https://ai-for-developers-project-387-22vi.onrender.com. Сервис описан в Blueprint `render.yaml`: один web-сервис из `Dockerfile`, бесплатный тариф, регион Frankfurt, проверка здоровья по `/up`.
 
 ### Релиз → деплой
 
