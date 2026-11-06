@@ -191,6 +191,46 @@ php artisan boost:update
 
 `CLAUDE.md`, `.mcp.json`, `.claude/`, `.junie/` и каталоги других агентов остаются локальными и лежат в `.gitignore`. Исключение — `.claude/settings.json`: это общие правила разрешений Claude Code для проекта, он закоммичен. `CLAUDE.md` не создавайте: при его наличии Boost пишет инструкции туда, а не в `AGENTS.md`.
 
+### Агент в GitHub
+
+Воркфлоу `.github/workflows/claude.yml` запускает Claude Code в GitHub Actions по комментарию в issue или pull request. Агент отвечает комментарием от имени приложения Claude, а правки пушит в ветку.
+
+| Параметр        | Значение                                                                                                                                                                                                                                 |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Событие         | `issue_comment` (обсуждение issue или PR) и `pull_request_review_comment` (комментарий к строке diff), только `types: [created]`: правка комментария агента повторно не зовёт                                                            |
+| Команда         | `@claude` в тексте комментария, значение `trigger_phrase` по умолчанию                                                                                                                                                                   |
+| Кто может звать | автор с `author_association` `OWNER`, `MEMBER` или `COLLABORATOR` и не бот. Остальные комментарии отсекает условие `if` до вызова модели. Экшен вдобавок сам пускает только пользователей с правом записи                                |
+| Модель          | `claude-sonnet-5-5` (Anthropic API), задаётся в `claude_args --model`                                                                                                                                                                    |
+| Ключ            | секрет репозитория `ANTHROPIC_API_KEY`                                                                                                                                                                                                   |
+| Назначение      | ответы на вопросы, спеки (`to-spec`), тикеты (`to-tickets`) и небольшие правки. Крупные задачи и `implement-spec` выполняются локально                                                                                                   |
+| Где результат   | ответ — комментарием в том же issue или PR, правки — в ветке `claude/...` со ссылкой на создание PR, журнал прогона — во вкладке [Actions](https://github.com/MaratSafiullin/ai-for-developers-project-387/actions/workflows/claude.yml) |
+
+**Почему Claude Code, а не OpenCode.** Задание предлагает OpenCode и его GitHub App. Здесь подключён тот же агент, что используется локально: Claude Code через официальный экшен [`anthropics/claude-code-action`](https://github.com/anthropics/claude-code-action) и [Claude GitHub App](https://github.com/apps/claude). Сценарии те же: вызов командой из комментария, скиллы проекта, ответ и правки от имени приложения. Соответствие настроек:
+
+- `mentions` у OpenCode — это `trigger_phrase` у Claude. Оставлено значение по умолчанию `@claude`, свои команды не заводились.
+- `share` у OpenCode публикует сессию по ссылке. У Claude Code такой публикации нет. Ближайший параметр — `show_full_output`: при `true` весь диалог агента, включая ответы API, печатается в журнал Actions, а в открытом репозитории этот журнал публичный. Решение: `show_full_output: false`, наружу видны только комментарии агента.
+- Правила проекта агент берёт из `AGENTS.md`, как и локально. `CLAUDE.md` не нужен (см. выше).
+
+**Скиллы на раннере.** Раннер стартует с чистой машины, поэтому воркфлоу ставит скиллы сам:
+
+- плагин `mattpocock-skills` из каталога `claude-plugins-official` (входы `plugin_marketplaces` и `plugins`) — тот же, что установлен локально: `to-spec`, `to-tickets`, `implement-spec` и остальные;
+- проектные скиллы Boost: `composer install` и `php artisan boost:update` генерируют `.claude/skills/`, который не хранится в git.
+
+`to-spec`, `to-tickets` и `implement-spec` помечены `disable-model-invocation: true`: локально их запускает только набранная человеком slash-команда, а модель сама вызвать их не может. В GitHub текст комментария приходит агенту внутри промпта экшена, а не как slash-команда, поэтому такой скилл агент открывает как файл: находит `SKILL.md` в каталоге установленного плагина и выполняет его. Просите прямо, например: `@claude прочитай SKILL.md скилла to-spec из плагина mattpocock-skills и выполни его по обсуждению этого issue`. Скиллы без этой пометки (`tdd`, `code-review`, скиллы Boost) агент вызывает сам.
+
+Настройки трекера (`docs/agents/`) и правила (`AGENTS.md`) приходят вместе с кодом при checkout.
+
+**Права.** Комментарии и push делает токен Claude GitHub App: экшен получает его обменом OIDC-токена, поэтому у задания `id-token: write`. Токен воркфлоу (`GITHUB_TOKEN`) получает только `contents: read`, `issues: write` и `pull-requests: read`: он передаётся в `GH_TOKEN`, чтобы `gh` в скиллах трекера мог читать и создавать issues и читать PR. У `actions/checkout` стоит `persist-credentials: false`, экшен сам настраивает push токеном приложения. Агенту разрешены только `Skill`, `Edit`, `Write` и формы `gh issue view|list|create|comment|edit` и `gh pr view|diff` (`claude_args --allowedTools`). Тесты и линтеры агент на раннере не запускает: его ветку проверяет `tests.yml` в PR, как любую другую.
+
+**Безопасность.** Воркфлоу не использует `pull_request_target`: комментарии из fork не получают ни ключа, ни права записи, потому что их авторы не проходят фильтр `author_association`. Ключ хранится только в секретах. Экшен закреплён хешем коммита, его обновления предлагает Dependabot.
+
+**Остановка и расход.** `timeout-minutes: 30` ограничивает один прогон. `concurrency` по номеру issue или PR ставит повторный вызов в очередь, а не запускает его параллельно. Текущий прогон останавливает Cancel workflow на странице прогона, будущие — Disable workflow во вкладке Actions. Уже отправленный запрос к API может доработать на стороне Anthropic; в крайнем случае ключ отзывается в [Console](https://console.anthropic.com/settings/keys).
+
+**Первичная настройка**, один раз:
+
+1. Установить [Claude GitHub App](https://github.com/apps/claude) на этот репозиторий. Команду `/install-github-app` из Claude Code не используйте: она создаёт свой воркфлоу и PR, которые конфликтуют с `claude.yml`.
+2. Добавить ключ Anthropic API в секрет `ANTHROPIC_API_KEY` (Settings → Secrets and variables → Actions).
+
 ### MCP Render
 
 Сервисом на Render можно управлять из Claude Code через официальный плагин `render@claude-plugins-official`: смотреть деплои, логи и метрики. Ключей и токенов в репозитории нет, вход идёт через OAuth:
