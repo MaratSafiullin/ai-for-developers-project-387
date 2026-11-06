@@ -64,6 +64,9 @@ jobs:
             - Nobody will answer during this run, so do not wait for the maintainer. Post one comment with the skill's Triage Notes and questions, in Russian.
             - Apply the category label and `needs-info` when information is missing, otherwise `needs-triage`, then stop.
             - If a check could not run because a command was not allowed, say so in the comment.
+          # Unlike mention mode, prompt mode adds no read tools on its own. Read
+          # is listed so the agent can open the triage SKILL.md, which lives in
+          # the plugin directory outside the checkout.
           claude_args: >-
             --model claude-sonnet-5-5
-            --allowedTools "Skill,Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh issue comment:*),Bash(gh issue edit:*)"
+            --allowedTools "Skill,Read,Glob,Grep,Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh issue comment:*),Bash(gh issue edit:*)"
