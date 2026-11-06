@@ -1,0 +1,69 @@
+name: triage
+
+on:
+  issues:
+    types: [opened]
+
+# The Claude GitHub App token, obtained through the OIDC exchange, runs the
+# action. The workflow token only serves `gh`, which reads the issue, comments
+# on it and sets labels, so it gets nothing beyond issue access.
+permissions:
+  contents: read
+  id-token: write
+  issues: write
+
+jobs:
+  triage:
+    # Only a new issue from a trusted human reaches the model. Tickets that
+    # to-spec and to-tickets publish already carry a ready-for-* label and
+    # need no second triage.
+    if: >-
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.issue.author_association) &&
+      github.event.issue.user.type != 'Bot' &&
+      !contains(github.event.issue.labels.*.name, 'ready-for-agent') &&
+      !contains(github.event.issue.labels.*.name, 'ready-for-human')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # One triage at a time across the repository. GitHub keeps a single pending
+    # run per group, so in a burst an older pending run is cancelled; such an
+    # issue is triaged by hand with @claude.
+    concurrency:
+      group: triage
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Run Claude
+        uses: anthropics/claude-code-action@c0949c50a78c1ec8ce2647db36629b870e715d0c # v1.0.268
+        env:
+          GH_TOKEN: ${{ github.token }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          show_full_output: false
+          plugin_marketplaces: https://github.com/anthropics/claude-plugins-official.git
+          plugins: mattpocock-skills@claude-plugins-official
+          # Only the repository and the issue number go into the prompt. The
+          # agent reads the issue text itself, so it never lands in the prompt.
+          prompt: |
+            Repository: ${{ github.repository }}. A new issue was opened: #${{ github.event.issue.number }}.
+
+            First run `gh issue view ${{ github.event.issue.number }} --json labels`. A ticket may get its label right after creation, so the `opened` event could have missed it. If the issue has `ready-for-agent` or `ready-for-human`, it is a prepared spec or ticket: stop without commenting or changing labels.
+
+            Otherwise read AGENTS.md, GLOSSARY.md and docs/agents/*.md: they hold the project rules, the domain language and the issue tracker setup.
+
+            Then read the SKILL.md of the `triage` skill from the installed mattpocock-skills plugin and run it for issue #${{ github.event.issue.number }}. The skill cannot be invoked through the Skill tool, so open the file and follow it.
+
+            This is an unattended preliminary triage:
+            - Do not change code, do not create branches, do not push.
+            - Do not close the issue, do not apply `wontfix` or `ready-for-agent`, do not write `.out-of-scope/`. Those are the maintainer's decisions.
+            - Nobody will answer during this run, so do not wait for the maintainer. Post one comment with the skill's Triage Notes and questions, in Russian.
+            - Apply the category label and `needs-info` when information is missing, otherwise `needs-triage`, then stop.
+            - If a check could not run because a command was not allowed, say so in the comment.
+          claude_args: >-
+            --model claude-sonnet-5-5
+            --allowedTools "Skill,Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh issue comment:*),Bash(gh issue edit:*)"
