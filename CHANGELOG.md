@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.3](https://github.com/MaratSafiullin/ai-for-developers-project-387/compare/v0.1.2...v0.1.3) (2026-11-06)
+
+
+### Bug Fixes
+
+* **ci:** разрешить автотриажу чтение скилла и кода ([#11](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/11)) ([d7f5f5a](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/d7f5f5a648124538a26ed2f2d8def8e4eec9e120))
+* **ci:** разрешить автотриажу чтение скилла и кода ([#11](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/11)) ([d4a5684](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/d4a5684d9e579035e937aa5c09745d5b5569bf8e))
+
+
+### Documentation
+
+* добавить примеры команд агенту в README ([#6](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/6)) ([a3d97ce](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/a3d97ce11720140c7cea85e5cde6af6500006f60))
+* добавить примеры команд агенту в README ([#6](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/6)) ([9ffd775](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/9ffd77561df72e0a2393accd4e63ca10286365d1))
+* ставить метку триажа при создании issue ([#11](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/11)) ([0297a7b](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/0297a7b483d7f20f5b97bc1c4cf22303966afd1a))
+
 ## [0.1.2](https://github.com/MaratSafiullin/ai-for-developers-project-387/compare/v0.1.1...v0.1.2) (2026-11-05)
 
 
