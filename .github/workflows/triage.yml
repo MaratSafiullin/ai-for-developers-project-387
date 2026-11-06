@@ -52,7 +52,9 @@ jobs:
           prompt: |
             Repository: ${{ github.repository }}. A new issue was opened: #${{ github.event.issue.number }}.
 
-            Read AGENTS.md, GLOSSARY.md and docs/agents/*.md first: they hold the project rules, the domain language and the issue tracker setup.
+            First run `gh issue view ${{ github.event.issue.number }} --json labels`. A ticket may get its label right after creation, so the `opened` event could have missed it. If the issue has `ready-for-agent` or `ready-for-human`, it is a prepared spec or ticket: stop without commenting or changing labels.
+
+            Otherwise read AGENTS.md, GLOSSARY.md and docs/agents/*.md: they hold the project rules, the domain language and the issue tracker setup.
 
             Then read the SKILL.md of the `triage` skill from the installed mattpocock-skills plugin and run it for issue #${{ github.event.issue.number }}. The skill cannot be invoked through the Skill tool, so open the file and follow it.
 
