@@ -9,6 +9,8 @@ on:
 # The Claude GitHub App token, obtained through the OIDC exchange, posts the
 # comments and pushes branches. The workflow token only serves `gh` in the
 # issue tracker skills, so it gets nothing beyond issue and pull request access.
+# It is scoped to this repository, so `gh api`, which links sub-issues and
+# blocking dependencies, cannot write anywhere else or go past these scopes.
 permissions:
   contents: read
   id-token: write
@@ -64,4 +66,4 @@ jobs:
           plugins: mattpocock-skills@claude-plugins-official
           claude_args: >-
             --model claude-sonnet-5-5
-            --allowedTools "Skill,Edit,Write,Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh issue create:*),Bash(gh issue comment:*),Bash(gh issue edit:*),Bash(gh pr view:*),Bash(gh pr diff:*)"
+            --allowedTools "Skill,Edit,Write,Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh issue create:*),Bash(gh issue comment:*),Bash(gh issue edit:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*)"
