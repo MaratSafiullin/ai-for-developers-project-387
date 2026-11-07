@@ -14,10 +14,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # On a pull request, check the head commit of the PR branch rather than
+      # the temporary merge commit; on push, github.sha as before.
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+
+      - name: Show Checked Out SHA
+        id: sha
+        run: |
+          sha=$(git rev-parse HEAD)
+          echo "git rev-parse HEAD: $sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
       - name: Setup PHP
         uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
@@ -38,7 +48,31 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run CI Checks
+        id: ci-check
         run: composer ci:check
+
+      # ci:check runs the browser tests last: when an earlier check fails, the
+      # artifact holds only the SHA and the outcome, without results or traces.
+      - name: Write Browser Evidence Summary
+        if: always()
+        env:
+          SHA: ${{ steps.sha.outputs.sha }}
+          OUTCOME: ${{ steps.ci-check.outcome }}
+        run: |
+          mkdir -p browser-evidence
+          echo "$SHA" > browser-evidence/sha.txt
+          echo "$OUTCOME" > browser-evidence/outcome.txt
+
+      - name: Upload Browser Evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-evidence-${{ steps.sha.outputs.sha }}
+          path: |
+            browser-evidence/
+            playwright-report/results.json
+            test-results/
+          overwrite: true
 
   docker:
     runs-on: ubuntu-latest

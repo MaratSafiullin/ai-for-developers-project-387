@@ -12,6 +12,7 @@
 /resources/js/wayfinder
 /vendor
 /blob-report
+/browser-evidence
 /playwright-report
 /test-results
 .DS_Store
