@@ -15,14 +15,14 @@ jobs:
 
     steps:
       # On a pull request, check the head commit of the PR branch rather than
-      # the temporary merge commit; on push, github.sha as before.
+      # the temporary merge commit; on push, the pushed commit (github.sha).
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
-      - name: Show Checked Out SHA
+      - name: Record Checked Out SHA
         id: sha
         run: |
           sha=$(git rev-parse HEAD)
@@ -52,7 +52,8 @@ jobs:
         run: composer ci:check
 
       # ci:check runs the browser tests last: when an earlier check fails, the
-      # artifact holds only the SHA and the outcome, without results or traces.
+      # artifact holds only the SHA and the outcome, without results or traces,
+      # and e2e.txt says the browser tests did not run.
       - name: Write Browser Evidence Summary
         if: always()
         env:
@@ -62,6 +63,12 @@ jobs:
           mkdir -p browser-evidence
           echo "$SHA" > browser-evidence/sha.txt
           echo "$OUTCOME" > browser-evidence/outcome.txt
+          # The path matches the json reporter outputFile in playwright.config.ts.
+          if [ -f playwright-report/results.json ]; then
+            echo "ran" > browser-evidence/e2e.txt
+          else
+            echo "not run" > browser-evidence/e2e.txt
+          fi
 
       - name: Upload Browser Evidence
         if: always()
