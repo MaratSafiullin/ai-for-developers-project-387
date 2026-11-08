@@ -66,11 +66,12 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/review"
           criteria="$RUNNER_TEMP/review/criteria.md"
-          if gh api -H "Accept: application/vnd.github.raw" "repos/$REPO/contents/REVIEW.md?ref=$BASE_SHA" > "$criteria" 2> "$RUNNER_TEMP/review/criteria-error.txt"; then
+          criteria_error="$RUNNER_TEMP/review/criteria-error.txt"
+          if gh api -H "Accept: application/vnd.github.raw" "repos/$REPO/contents/REVIEW.md?ref=$BASE_SHA" > "$criteria" 2> "$criteria_error"; then
             echo "present" > "$RUNNER_TEMP/review/criteria-status.txt"
-          elif ! grep -q "HTTP 404" "$RUNNER_TEMP/review/criteria-error.txt"; then
+          elif ! grep -q "HTTP 404" "$criteria_error"; then
             # Any failure other than a missing file stops the review.
-            cat "$RUNNER_TEMP/review/criteria-error.txt"
+            cat "$criteria_error"
             exit 1
           else
             echo "absent" > "$RUNNER_TEMP/review/criteria-status.txt"
@@ -85,7 +86,7 @@ jobs:
             echo
             echo "Gather the context yourself:"
             echo "- \`gh pr view $PR_NUMBER --comments\`: the description, the linked spec, tickets and approval, and earlier comments, including earlier automatic reviews."
-            echo "- \`gh api repos/$REPO/pulls/$PR_NUMBER/comments\`: comments on diff lines and the replies to them."
+            echo "- \`gh api repos/$REPO/pulls/$PR_NUMBER/comments --paginate\`: comments on diff lines and the replies to them."
             echo "- \`gh issue view <n> --comments\` for every issue the description links: the spec, the tickets and the discussion where a human approved the work. If a link is missing or does not open, say so in the review."
             echo "- \`gh pr diff $PR_NUMBER\`: the change itself. Read the surrounding code with Read, Glob and Grep."
             echo "- \`gh pr checks $PR_NUMBER\` and \`gh run list --commit $HEAD_SHA\`: CI results. If they are missing or still running, say that CI results are not available yet and draw no conclusions from them."
@@ -104,6 +105,7 @@ jobs:
       # read tools and Bash, and dontAsk denies every Bash command outside the
       # allow list and the built-in read-only set. The scrub keeps the model key
       # out of the commands the model runs; the GitHub token is read-only.
+      # `gh api` is allowed only for the diff line comments of this PR.
       - name: Run Review
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -111,32 +113,33 @@ jobs:
           CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
+          result="$RUNNER_TEMP/review/result.json"
+          exit_code=0
           claude -p "$(cat "$RUNNER_TEMP/review/prompt.md")" \
             --bare \
             --setting-sources user \
             --model claude-sonnet-5-5 \
             --tools "Read,Glob,Grep,Bash" \
-            --allowedTools "Read,Glob,Grep,Bash(gh pr view *),Bash(gh pr diff *),Bash(gh pr checks *),Bash(gh issue view *),Bash(gh run list *),Bash(gh run view *),Bash(gh api *)" \
+            --allowedTools "Read,Glob,Grep,Bash(gh pr view *),Bash(gh pr diff *),Bash(gh pr checks *),Bash(gh issue view *),Bash(gh run list *),Bash(gh run view *),Bash(gh api repos/$GH_REPO/pulls/$PR_NUMBER/comments *)" \
             --disallowedTools "mcp__*" \
             --permission-mode dontAsk \
             --no-session-persistence \
             --output-format json \
-            > "$RUNNER_TEMP/review/result.json"
+            > "$result" || exit_code=$?
 
-      # Fail closed: an error, a cut-off run or an empty answer publishes nothing.
-      - name: Check Review Result
-        run: |
-          result="$RUNNER_TEMP/review/result.json"
-          is_error=$(jq -r '.is_error' "$result")
-          subtype=$(jq -r '.subtype' "$result")
-          echo "is_error: $is_error, subtype: $subtype"
-          if [ "$is_error" != "false" ] || [ "$subtype" != "success" ]; then
-            jq -r '.result // empty' "$result"
+          # Fail closed: an error, a cut-off run or an empty answer publishes
+          # nothing, and the reason goes to the log.
+          is_error=$(jq -r '.is_error' "$result" || echo "unreadable")
+          subtype=$(jq -r '.subtype' "$result" || echo "unreadable")
+          echo "exit code: $exit_code, is_error: $is_error, subtype: $subtype"
+          if [ "$exit_code" -ne 0 ] || [ "$is_error" != "false" ] || [ "$subtype" != "success" ]; then
+            jq -r '.result // empty' "$result" || cat "$result"
             exit 1
           fi
           mkdir -p review
-          jq -r '.result' "$result" > review/body.md
+          jq -r '.result // empty' "$result" > review/body.md
           if [ ! -s review/body.md ]; then
             echo "The review is empty."
             exit 1
