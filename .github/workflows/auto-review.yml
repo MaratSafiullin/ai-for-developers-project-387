@@ -54,14 +54,17 @@ jobs:
 
       # The Bash sandbox of Claude Code needs bubblewrap and socat on Linux.
       # Ubuntu restricts unprivileged user namespaces through AppArmor, which
-      # bubblewrap relies on; the runner is discarded after the job.
+      # bubblewrap and its seccomp helper rely on; the runner is discarded
+      # after the job.
       - name: Install Sandbox Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install --yes bubblewrap socat
-          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
-            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-          fi
+          for restriction in apparmor_restrict_unprivileged_userns apparmor_restrict_unprivileged_unconfined; do
+            if [ -e "/proc/sys/kernel/$restriction" ]; then
+              sudo sysctl -w "kernel.$restriction=0"
+            fi
+          done
 
       # The criteria come from REVIEW.md of the base branch, so a pull request
       # cannot weaken its own review. Without the file in the base, the review
