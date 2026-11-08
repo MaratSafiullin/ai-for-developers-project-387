@@ -53,19 +53,23 @@ jobs:
         run: npm install --global @anthropic-ai/claude-code@2.1.319
 
       # The Bash sandbox of Claude Code needs bubblewrap and socat on Linux.
-      # Ubuntu restricts unprivileged user namespaces through AppArmor, which
-      # bubblewrap and its seccomp helper rely on, so bwrap gets the profile
-      # from the Claude Code sandboxing docs. A nested user namespace inside
-      # bwrap is checked here, before the model is paid for.
+      # Ubuntu ships the AppArmor profile bwrap-userns-restrict, which moves
+      # bwrap and its children into profiles that deny the uid map and nested
+      # user namespaces the sandbox and its seccomp helper need. It is replaced
+      # with the profile from the Claude Code sandboxing docs; the runner is
+      # discarded after the job. A nested user namespace inside bwrap is
+      # checked here, before the model is paid for.
       - name: Install Sandbox Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install --yes bubblewrap socat
           bwrap_path=$(command -v bwrap)
           echo "bwrap: $bwrap_path"
-          sudo aa-status | grep -iE 'bwrap|unpriv' || true
-          ls /etc/apparmor.d | grep -i bwrap || true
 
+          if [ -e /etc/apparmor.d/bwrap-userns-restrict ]; then
+            sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns-restrict
+            sudo rm /etc/apparmor.d/bwrap-userns-restrict
+          fi
           sudo tee /etc/apparmor.d/bwrap-claude > /dev/null <<EOF
           abi <abi/4.0>,
           include <tunables/global>
