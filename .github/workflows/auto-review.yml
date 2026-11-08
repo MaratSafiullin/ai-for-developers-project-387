@@ -163,7 +163,7 @@ jobs:
             --settings '{"sandbox":{"enabled":true,"failIfUnavailable":true,"allowUnsandboxedCommands":false,"network":{"allowedDomains":["api.github.com"]}}}' \
             --model claude-sonnet-5-5 \
             --tools "Read,Glob,Grep,Bash" \
-            --allowedTools "Read,Glob,Grep,Bash(gh pr view *),Bash(gh pr diff *),Bash(gh pr checks *),Bash(gh issue view *),Bash(gh run list *),Bash(gh run view *),Bash(gh api repos/$GH_REPO/pulls/$PR_NUMBER/comments *)" \
+            --allowedTools "Read,Glob,Grep,Bash(gh pr view *),Bash(gh pr diff *),Bash(gh pr checks *),Bash(gh issue view *),Bash(gh run list *),Bash(gh run view *),Bash(gh api repos/$GH_REPO/pulls/$PR_NUMBER/comments),Bash(gh api repos/$GH_REPO/pulls/$PR_NUMBER/comments *)" \
             --disallowedTools "mcp__*" \
             --no-session-persistence \
             --output-format json \
