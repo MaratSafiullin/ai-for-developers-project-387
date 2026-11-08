@@ -126,6 +126,8 @@ jobs:
             echo "- \`gh pr diff $PR_NUMBER\`: the change itself. Read the surrounding code with Read, Glob and Grep."
             echo "- \`gh pr checks $PR_NUMBER\` and \`gh run list --commit $HEAD_SHA\`: CI results. If they are missing or still running, say that CI results are not available yet and draw no conclusions from them."
             echo
+            echo "When a command's output is too long, it is saved to a file and you get its path: open that file with the Read tool, not with Bash."
+            echo
             echo "Write the review in Russian, in GitHub Markdown, without a top-level heading: the publishing job adds a heading with the commit SHA."
             echo
             echo "If you could not read the diff, do not write a review: start the answer with the line REVIEW-BLOCKED and give the reason after it. Such an answer is not published."
@@ -143,7 +145,9 @@ jobs:
       # built-in read-only set needs approval, and in a non-interactive run
       # nobody gives it, so it is denied. The scrub keeps the model key
       # out of the commands the model runs; the GitHub token is read-only.
-      # `gh api` is allowed only for the diff line comments of this PR. The
+      # `gh api` is allowed only for the diff line comments of this PR.
+      # --add-dir lets Read open long command output that the CLI saves under
+      # ~/.claude/projects, outside the checkout. The
       # scrub turns on the Bash sandbox, which reaches only api.github.com and
       # stops the run at startup if it cannot work.
       - name: Run Review
@@ -157,11 +161,13 @@ jobs:
         run: |
           result="$RUNNER_TEMP/review/result.json"
           exit_code=0
+          mkdir -p "$HOME/.claude/projects"
           claude -p "$(cat "$RUNNER_TEMP/review/prompt.md")" \
             --bare \
             --setting-sources user \
             --settings '{"sandbox":{"enabled":true,"failIfUnavailable":true,"allowUnsandboxedCommands":false,"network":{"allowedDomains":["api.github.com"]}}}' \
             --model claude-sonnet-5-5 \
+            --add-dir "$HOME/.claude/projects" \
             --tools "Read,Glob,Grep,Bash" \
             --allowedTools "Read,Glob,Grep,Bash(gh pr view *),Bash(gh pr diff *),Bash(gh pr checks *),Bash(gh issue view *),Bash(gh run list *),Bash(gh run view *),Bash(gh api repos/$GH_REPO/pulls/$PR_NUMBER/comments),Bash(gh api repos/$GH_REPO/pulls/$PR_NUMBER/comments *)" \
             --disallowedTools "mcp__*" \
