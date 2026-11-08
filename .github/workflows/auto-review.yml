@@ -122,7 +122,7 @@ jobs:
             echo "- \`gh pr view $PR_NUMBER\`: the description with the links to the spec, the tickets and the approval."
             echo "- \`gh pr view $PR_NUMBER --comments\`: earlier comments, including earlier automatic reviews and replies to them."
             echo "- \`gh api repos/$REPO/pulls/$PR_NUMBER/comments --paginate\`: comments on diff lines and the replies to them."
-            echo "- \`gh issue view <n> --comments\` for every issue the description links: the spec, the tickets and the discussion where a human approved the work. If a link is missing or does not open, say so in the review."
+            echo "- \`gh issue view <n>\` and \`gh issue view <n> --comments\` for every issue the description links: the first gives the spec or ticket text, the second the discussion where a human approved the work. If a link is missing or does not open, say so in the review."
             echo "- \`gh pr diff $PR_NUMBER\`: the change itself. Read the surrounding code with Read, Glob and Grep."
             echo "- \`gh pr checks $PR_NUMBER\` and \`gh run list --commit $HEAD_SHA\`: CI results. If they are missing or still running, say that CI results are not available yet and draw no conclusions from them."
             echo
