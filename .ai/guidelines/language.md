@@ -1,6 +1,6 @@
 # Language
 
-- Write documentation in Russian: `README.md`, `GLOSSARY.md`, ADRs in `docs/adr/`, GitHub issues, PR titles and bodies, commit descriptions and bodies, and the CHANGELOG. Keep the section headings that the `/pr` skill template prescribes as they are.
+- Write documentation in Russian: `README.md`, `GLOSSARY.md`, ADRs in `docs/adr/`, GitHub issues, PR titles and bodies, commit descriptions and bodies, and the CHANGELOG. Keep the section headings of `.github/pull_request_template.md` as they are, including the English `Summary`, `Evidence`, and `Merge Danger`.
 - Write all code in English: identifiers, comments, PHPDoc and TSDoc, doc comments in `contract/main.tsp`, test descriptions, and dataset keys.
 - Write instructions for agents in English: `.ai/guidelines/*`, `AGENTS.md`, `docs/agents/*`, and `REVIEW.md`.
 - Product content stays in the product's language, Russian: UI strings, `lang/`, seeders, test data, API error messages, and sample output quoted in code comments, such as `90 → «1 ч 30 мин»`.
