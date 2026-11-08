@@ -93,6 +93,8 @@ jobs:
             echo
             echo "Write the review in Russian, in GitHub Markdown, without a top-level heading: the publishing job adds a heading with the commit SHA."
             echo
+            echo "If you could not read the diff, do not write a review: start the answer with the line REVIEW-BLOCKED and give the reason after it. Such an answer is not published."
+            echo
             echo "Review criteria from REVIEW.md of the base branch:"
             echo
             echo "<review-criteria>"
@@ -105,7 +107,10 @@ jobs:
       # read tools and Bash, and dontAsk denies every Bash command outside the
       # allow list and the built-in read-only set. The scrub keeps the model key
       # out of the commands the model runs; the GitHub token is read-only.
-      # `gh api` is allowed only for the diff line comments of this PR.
+      # `gh api` is allowed only for the diff line comments of this PR. The
+      # Bash sandbox is off: on the runner it lacks bubblewrap and socat and
+      # then refuses every command, while the limits above already keep the
+      # model read-only.
       - name: Run Review
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -120,6 +125,7 @@ jobs:
           claude -p "$(cat "$RUNNER_TEMP/review/prompt.md")" \
             --bare \
             --setting-sources user \
+            --settings '{"sandbox":{"enabled":false}}' \
             --model claude-sonnet-5-5 \
             --tools "Read,Glob,Grep,Bash" \
             --allowedTools "Read,Glob,Grep,Bash(gh pr view *),Bash(gh pr diff *),Bash(gh pr checks *),Bash(gh issue view *),Bash(gh run list *),Bash(gh run view *),Bash(gh api repos/$GH_REPO/pulls/$PR_NUMBER/comments *)" \
@@ -129,11 +135,13 @@ jobs:
             --output-format json \
             > "$result" || exit_code=$?
 
-          # Fail closed: an error, a cut-off run or an empty answer publishes
-          # nothing, and the reason goes to the log.
+          # Fail closed: an error, a cut-off run, an empty answer or a review
+          # the model could not do publishes nothing, and the reason goes to
+          # the log together with the denied tool calls.
           is_error=$(jq -r '.is_error' "$result" || echo "unreadable")
           subtype=$(jq -r '.subtype' "$result" || echo "unreadable")
           echo "exit code: $exit_code, is_error: $is_error, subtype: $subtype"
+          echo "permission denials: $(jq -c '.permission_denials // []' "$result" || echo "unreadable")"
           if [ "$exit_code" -ne 0 ] || [ "$is_error" != "false" ] || [ "$subtype" != "success" ]; then
             jq -r '.result // empty' "$result" || cat "$result"
             exit 1
@@ -142,6 +150,10 @@ jobs:
           jq -r '.result // empty' "$result" > review/body.md
           if [ ! -s review/body.md ]; then
             echo "The review is empty."
+            exit 1
+          fi
+          if head -n 1 review/body.md | grep -q "^REVIEW-BLOCKED"; then
+            cat review/body.md
             exit 1
           fi
           cp "$RUNNER_TEMP/review/criteria-status.txt" review/criteria-status.txt
