@@ -152,6 +152,7 @@ jobs:
           name: auto-review
           path: review/
           retention-days: 7
+          overwrite: true
 
   publish:
     needs: review
