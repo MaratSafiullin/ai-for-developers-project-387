@@ -119,7 +119,8 @@ jobs:
             echo "You only read: do not try to change files, push, comment or approve. Your final answer is the review text; a separate job publishes it."
             echo
             echo "Gather the context yourself:"
-            echo "- \`gh pr view $PR_NUMBER --comments\`: the description, the linked spec, tickets and approval, and earlier comments, including earlier automatic reviews."
+            echo "- \`gh pr view $PR_NUMBER\`: the description with the links to the spec, the tickets and the approval."
+            echo "- \`gh pr view $PR_NUMBER --comments\`: earlier comments, including earlier automatic reviews and replies to them."
             echo "- \`gh api repos/$REPO/pulls/$PR_NUMBER/comments --paginate\`: comments on diff lines and the replies to them."
             echo "- \`gh issue view <n> --comments\` for every issue the description links: the spec, the tickets and the discussion where a human approved the work. If a link is missing or does not open, say so in the review."
             echo "- \`gh pr diff $PR_NUMBER\`: the change itself. Read the surrounding code with Read, Glob and Grep."
@@ -138,8 +139,9 @@ jobs:
 
       # --bare and --setting-sources user keep hooks, settings, plugins and MCP
       # servers of the checked-out branch out of the run. --tools leaves only
-      # read tools and Bash, and dontAsk denies every Bash command outside the
-      # allow list and the built-in read-only set. The scrub keeps the model key
+      # read tools and Bash. A Bash command outside the allow list and the
+      # built-in read-only set needs approval, and in a non-interactive run
+      # nobody gives it, so it is denied. The scrub keeps the model key
       # out of the commands the model runs; the GitHub token is read-only.
       # `gh api` is allowed only for the diff line comments of this PR. The
       # scrub turns on the Bash sandbox, which reaches only api.github.com and
@@ -163,7 +165,6 @@ jobs:
             --tools "Read,Glob,Grep,Bash" \
             --allowedTools "Read,Glob,Grep,Bash(gh pr view *),Bash(gh pr diff *),Bash(gh pr checks *),Bash(gh issue view *),Bash(gh run list *),Bash(gh run view *),Bash(gh api repos/$GH_REPO/pulls/$PR_NUMBER/comments *)" \
             --disallowedTools "mcp__*" \
-            --permission-mode dontAsk \
             --no-session-persistence \
             --output-format json \
             > "$result" || exit_code=$?
