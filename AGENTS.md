@@ -27,13 +27,13 @@ Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/ag
 - An implementation commit references the ticket it closes: append the GitHub issue number in parentheses at the end of the description, for example `feat: запись на свободный слот (#12)`. GitHub turns the number into a link, so the history shows which commit did which ticket. Commits not tied to a ticket, such as release-please's `chore(main): release …` or merge commits, go without a number. The hook does not enforce this rule.
 - The `.githooks/commit-msg` hook enforces this format and keeps its own copy of the type list; update both together. If the hook rejects a message, fix the message. Never bypass the hook with `--no-verify`.
 - Intermediate commits made at the user's request follow the same rules: pick the type by what the change does, never `wip:` or `tmp:`.
-- A change made in response to review of code that has not been released yet gets the type of what it does, such as `feat`, `refactor`, `test`, `docs`, or `ci`, but never `fix`. The bug never shipped, and release-please would put a non-existent fix into the CHANGELOG. Use `fix` only for behaviour that is already in a release.
+- A change made in response to review of code that has not been released yet gets the type of what it does, such as `feat`, `refactor`, `test`, `docs`, or `ci`, but never `fix`: the bug never shipped, and release-please would put a non-existent fix into the CHANGELOG. Keep `fix` for behaviour that is already in a release.
 
 === .ai/language rules ===
 
 # Language
 
-- Write documentation in Russian: `README.md`, `GLOSSARY.md`, ADRs in `docs/adr/`, GitHub issues, PR titles and bodies, commit descriptions and bodies, and the CHANGELOG. Keep the section headings of `.github/pull_request_template.md` as they are, including the English `Summary`, `Evidence`, and `Merge Danger`.
+- Write documentation in Russian: `README.md`, `GLOSSARY.md`, ADRs in `docs/adr/`, GitHub issues, PR titles and bodies, commit descriptions and bodies, and the CHANGELOG. Keep the section headings of `.github/pull_request_template.md` as they are, English ones included.
 - Write all code in English: identifiers, comments, PHPDoc and TSDoc, doc comments in `contract/main.tsp`, test descriptions, and dataset keys.
 - Write instructions for agents in English: `.ai/guidelines/*`, `AGENTS.md`, `docs/agents/*`, and `REVIEW.md`.
 - Product content stays in the product's language, Russian: UI strings, `lang/`, seeders, test data, API error messages, and sample output quoted in code comments, such as `90 → «1 ч 30 мин»`.
@@ -55,10 +55,9 @@ Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/ag
 
 # Pull Requests
 
-- Fill every PR description from `.github/pull_request_template.md`. GitHub pre-fills the template only in the web UI and in interactive `gh pr create`; it does not apply to `gh pr create --body-file` or to the GitHub MCP `create_pull_request`. Open the file, keep its headings and order, replace each hint comment with content, and leave no section empty.
-- The template's structure wins over the `/pr` skill: `/pr` adds no headings of its own, and its guidance applies inside `Summary`, `Evidence`, and `Merge Danger`.
-- Put every link in `Контекст`: the original request, the spec, the tickets, and the human approval. Add a `Closes #N` line for each issue the PR completes; leave out a spec that still has open tickets.
-- In `Evidence`, give the commands you ran, links to the CI runs, and the SHA they checked. In `Откат`, say how to revert in Git, how to check that the old behaviour is back, and whether reverting the code is enough when the PR changes data.
+- Fill every PR description from `.github/pull_request_template.md`, with all the links the `Контекст` hint asks for and a `Closes #N` line for each issue the PR completes. Write no `Closes` line for a spec that still has open tickets.
+- GitHub pre-fills the template only in the web UI and in interactive `gh pr create`; it does not apply to `gh pr create --body-file` or to the GitHub MCP `create_pull_request`. Open the file, keep its headings and order, and replace each hint comment with content. If a part of a section does not apply, such as before and after for a docs-only change, say so in one line with the reason instead of deleting it.
+- The template's structure wins over the `/pr` skill. Use `/pr` guidance for the visuals in `Summary` and the evidence in `Evidence`; in `Merge Danger`, the template's fields replace `/pr`'s `Door` and `Blast Radius`, and reversibility goes to `Откат`.
 
 === foundation rules ===
 
