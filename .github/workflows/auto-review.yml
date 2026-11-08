@@ -54,17 +54,33 @@ jobs:
 
       # The Bash sandbox of Claude Code needs bubblewrap and socat on Linux.
       # Ubuntu restricts unprivileged user namespaces through AppArmor, which
-      # bubblewrap and its seccomp helper rely on; the runner is discarded
-      # after the job.
+      # bubblewrap and its seccomp helper rely on, so bwrap gets the profile
+      # from the Claude Code sandboxing docs. A nested user namespace inside
+      # bwrap is checked here, before the model is paid for.
       - name: Install Sandbox Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install --yes bubblewrap socat
-          for restriction in apparmor_restrict_unprivileged_userns apparmor_restrict_unprivileged_unconfined; do
-            if [ -e "/proc/sys/kernel/$restriction" ]; then
-              sudo sysctl -w "kernel.$restriction=0"
-            fi
-          done
+          bwrap_path=$(command -v bwrap)
+          echo "bwrap: $bwrap_path"
+          sudo aa-status | grep -iE 'bwrap|unpriv' || true
+          ls /etc/apparmor.d | grep -i bwrap || true
+
+          sudo tee /etc/apparmor.d/bwrap-claude > /dev/null <<EOF
+          abi <abi/4.0>,
+          include <tunables/global>
+
+          profile bwrap-claude $bwrap_path flags=(unconfined) {
+            userns,
+          }
+          EOF
+          sudo apparmor_parser -r /etc/apparmor.d/bwrap-claude
+
+          if ! bwrap --ro-bind / / --dev /dev --proc /proc --unshare-user -- unshare --user --map-root-user true; then
+            echo "A nested user namespace fails inside bwrap."
+            sudo dmesg | grep 'apparmor="DENIED"' || echo "No AppArmor denials in dmesg."
+            exit 1
+          fi
 
       # The criteria come from REVIEW.md of the base branch, so a pull request
       # cannot weaken its own review. Without the file in the base, the review
