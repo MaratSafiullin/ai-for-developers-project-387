@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
 
+const isCi = !!process.env.CI;
 const port = 8010;
 const baseURL = `http://127.0.0.1:${port}`;
 
@@ -14,15 +15,19 @@ const databasePath = fileURLToPath(
 
 export default defineConfig({
     testDir: 'tests/e2e',
-    forbidOnly: !!process.env.CI,
+    forbidOnly: isCi,
     // The database is fresh once per run, not per test: a retry would see the
     // data of the failed attempt, so failures are not retried.
     retries: 0,
     workers: 1,
-    reporter: 'list',
+    // CI keeps a machine-readable result and a trace of every test, passed or
+    // failed, for the browser evidence artifact of the tests workflow.
+    reporter: isCi
+        ? [['list'], ['json', { outputFile: 'playwright-report/results.json' }]]
+        : 'list',
     use: {
         baseURL,
-        trace: 'retain-on-failure',
+        trace: isCi ? 'on' : 'retain-on-failure',
     },
     projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
     webServer: {
