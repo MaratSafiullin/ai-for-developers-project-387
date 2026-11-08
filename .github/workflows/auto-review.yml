@@ -52,6 +52,17 @@ jobs:
       - name: Install Claude Code
         run: npm install --global @anthropic-ai/claude-code@2.1.319
 
+      # The Bash sandbox of Claude Code needs bubblewrap and socat on Linux.
+      # Ubuntu restricts unprivileged user namespaces through AppArmor, which
+      # bubblewrap relies on; the runner is discarded after the job.
+      - name: Install Sandbox Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes bubblewrap socat
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+
       # The criteria come from REVIEW.md of the base branch, so a pull request
       # cannot weaken its own review. Without the file in the base, the review
       # runs without criteria and says so; the head copy is never used.
@@ -108,9 +119,8 @@ jobs:
       # allow list and the built-in read-only set. The scrub keeps the model key
       # out of the commands the model runs; the GitHub token is read-only.
       # `gh api` is allowed only for the diff line comments of this PR. The
-      # Bash sandbox is off: on the runner it lacks bubblewrap and socat and
-      # then refuses every command, while the limits above already keep the
-      # model read-only.
+      # scrub turns on the Bash sandbox, which reaches only api.github.com and
+      # stops the run at startup if it cannot work.
       - name: Run Review
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -125,7 +135,7 @@ jobs:
           claude -p "$(cat "$RUNNER_TEMP/review/prompt.md")" \
             --bare \
             --setting-sources user \
-            --settings '{"sandbox":{"enabled":false}}' \
+            --settings '{"sandbox":{"enabled":true,"failIfUnavailable":true,"allowUnsandboxedCommands":false,"network":{"allowedDomains":["api.github.com"]}}}' \
             --model claude-sonnet-5-5 \
             --tools "Read,Glob,Grep,Bash" \
             --allowedTools "Read,Glob,Grep,Bash(gh pr view *),Bash(gh pr diff *),Bash(gh pr checks *),Bash(gh issue view *),Bash(gh run list *),Bash(gh run view *),Bash(gh api repos/$GH_REPO/pulls/$PR_NUMBER/comments *)" \
