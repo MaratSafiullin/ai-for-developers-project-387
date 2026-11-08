@@ -1,0 +1,245 @@
+name: auto-review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# Every job declares its own permissions. The review job gets read access and
+# the model key; the publish job gets the write token and no model.
+permissions: {}
+
+# A new push to the same pull request cancels the review of the older commit.
+concurrency:
+  group: auto-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    # Only a ready pull request from a branch of this repository, opened by a
+    # trusted human or by the Claude App, reaches the model. Drafts, forks and
+    # other authors finish here without the key. `claude[bot]` is matched by
+    # login: its author_association is not one of the trusted values.
+    if: >-
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association) ||
+        github.event.pull_request.user.login == 'claude[bot]'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      checks: read
+      contents: read
+      issues: read
+      pull-requests: read
+      statuses: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install Claude Code
+        run: npm install --global @anthropic-ai/claude-code@2.1.319
+
+      # The Bash sandbox of Claude Code needs bubblewrap and socat on Linux.
+      # Ubuntu ships the AppArmor profile bwrap-userns-restrict, which moves
+      # bwrap and its children into profiles that deny the uid map and nested
+      # user namespaces the sandbox and its seccomp helper need. It is replaced
+      # with the profile from the Claude Code sandboxing docs; the runner is
+      # discarded after the job. A nested user namespace inside bwrap is
+      # checked here, before the model is paid for.
+      - name: Install Sandbox Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes bubblewrap socat
+          bwrap_path=$(command -v bwrap)
+          echo "bwrap: $bwrap_path"
+
+          if [ -e /etc/apparmor.d/bwrap-userns-restrict ]; then
+            sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns-restrict
+            sudo rm /etc/apparmor.d/bwrap-userns-restrict
+          fi
+          sudo tee /etc/apparmor.d/bwrap-claude > /dev/null <<EOF
+          abi <abi/4.0>,
+          include <tunables/global>
+
+          profile bwrap-claude $bwrap_path flags=(unconfined) {
+            userns,
+          }
+          EOF
+          sudo apparmor_parser -r /etc/apparmor.d/bwrap-claude
+
+          if ! bwrap --ro-bind / / --dev /dev --proc /proc --unshare-user -- unshare --user --map-root-user true; then
+            echo "A nested user namespace fails inside bwrap."
+            sudo dmesg | grep 'apparmor="DENIED"' || echo "No AppArmor denials in dmesg."
+            exit 1
+          fi
+
+      # The criteria come from REVIEW.md of the base branch, so a pull request
+      # cannot weaken its own review. Without the file in the base, the review
+      # runs without criteria and says so; the head copy is never used.
+      - name: Build Prompt
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/review"
+          criteria="$RUNNER_TEMP/review/criteria.md"
+          criteria_error="$RUNNER_TEMP/review/criteria-error.txt"
+          if gh api -H "Accept: application/vnd.github.raw" "repos/$REPO/contents/REVIEW.md?ref=$BASE_SHA" > "$criteria" 2> "$criteria_error"; then
+            echo "present" > "$RUNNER_TEMP/review/criteria-status.txt"
+          elif ! grep -q "HTTP 404" "$criteria_error"; then
+            # Any failure other than a missing file stops the review.
+            cat "$criteria_error"
+            exit 1
+          else
+            echo "absent" > "$RUNNER_TEMP/review/criteria-status.txt"
+            echo "REVIEW.md is missing in $BASE_REF at $BASE_SHA. Review without project criteria and say so in the first line of the review." > "$criteria"
+          fi
+
+          {
+            echo "You are the automatic reviewer of pull request #$PR_NUMBER in $REPO."
+            echo "Review exactly commit $HEAD_SHA, which is checked out in the working directory. The base branch is $BASE_REF."
+            echo
+            echo "You only read: do not try to change files, push, comment or approve. Your final answer is the review text; a separate job publishes it."
+            echo
+            echo "Gather the context yourself:"
+            echo "- \`gh pr view $PR_NUMBER\`: the description with the links to the spec, the tickets and the approval."
+            echo "- \`gh pr view $PR_NUMBER --comments\`: earlier comments, including earlier automatic reviews and replies to them."
+            echo "- \`gh api repos/$REPO/pulls/$PR_NUMBER/comments --paginate\`: comments on diff lines and the replies to them."
+            echo "- \`gh issue view <n> --json title,body,comments\` for every issue the description links: the spec or ticket text and the discussion where a human approved the work. Use exactly these JSON fields: the plain form also asks for project data the token cannot read. If a link is missing or does not open, say so in the review."
+            echo "- \`gh pr diff $PR_NUMBER\`: the change itself. Read the surrounding code with Read, Glob and Grep."
+            echo "- \`gh pr checks $PR_NUMBER\` and \`gh run list --commit $HEAD_SHA\`: CI results. If they are missing or still running, say that CI results are not available yet and draw no conclusions from them."
+            echo
+            echo "When a command's output is too long, it is saved to a file and you get its path: open that file with the Read tool, not with Bash."
+            echo
+            echo "Write the review in Russian, in GitHub Markdown, without a top-level heading: the publishing job adds a heading with the commit SHA."
+            echo
+            echo "If you could not read the diff, do not write a review: start the answer with the line REVIEW-BLOCKED and give the reason after it. Such an answer is not published."
+            echo
+            echo "Review criteria from REVIEW.md of the base branch:"
+            echo
+            echo "<review-criteria>"
+            cat "$criteria"
+            echo "</review-criteria>"
+          } > "$RUNNER_TEMP/review/prompt.md"
+
+      # --bare and --setting-sources user keep hooks, settings, plugins and MCP
+      # servers of the checked-out branch out of the run. --tools leaves only
+      # read tools and Bash. A Bash command outside the allow list and the
+      # built-in read-only set needs approval, and in a non-interactive run
+      # nobody gives it, so it is denied. The scrub keeps the model key
+      # out of the commands the model runs; the GitHub token is read-only.
+      # `gh api` is allowed only for the diff line comments of this PR.
+      # --add-dir lets Read open long command output that the CLI saves under
+      # ~/.claude/projects, outside the checkout. The
+      # scrub turns on the Bash sandbox, which reaches only api.github.com and
+      # stops the run at startup if it cannot work.
+      - name: Run Review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: '1'
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          result="$RUNNER_TEMP/review/result.json"
+          exit_code=0
+          mkdir -p "$HOME/.claude/projects"
+          claude -p "$(cat "$RUNNER_TEMP/review/prompt.md")" \
+            --bare \
+            --setting-sources user \
+            --settings '{"sandbox":{"enabled":true,"failIfUnavailable":true,"allowUnsandboxedCommands":false,"network":{"allowedDomains":["api.github.com"]}}}' \
+            --model claude-sonnet-5-5 \
+            --add-dir "$HOME/.claude/projects" \
+            --tools "Read,Glob,Grep,Bash" \
+            --allowedTools "Read,Glob,Grep,Bash(gh pr view *),Bash(gh pr diff *),Bash(gh pr checks *),Bash(gh issue view *),Bash(gh run list *),Bash(gh run view *),Bash(gh api repos/$GH_REPO/pulls/$PR_NUMBER/comments),Bash(gh api repos/$GH_REPO/pulls/$PR_NUMBER/comments *)" \
+            --disallowedTools "mcp__*" \
+            --no-session-persistence \
+            --output-format json \
+            > "$result" || exit_code=$?
+
+          # Fail closed: an error, a cut-off run, an empty answer or a review
+          # the model could not do publishes nothing, and the reason goes to
+          # the log together with the denied tool calls.
+          is_error=$(jq -r '.is_error' "$result" || echo "unreadable")
+          subtype=$(jq -r '.subtype' "$result" || echo "unreadable")
+          echo "exit code: $exit_code, is_error: $is_error, subtype: $subtype"
+          echo "permission denials: $(jq -c '.permission_denials // []' "$result" || echo "unreadable")"
+          if [ "$exit_code" -ne 0 ] || [ "$is_error" != "false" ] || [ "$subtype" != "success" ]; then
+            jq -r '.result // empty' "$result" || cat "$result"
+            exit 1
+          fi
+          mkdir -p review
+          jq -r '.result // empty' "$result" > review/body.md
+          if [ ! -s review/body.md ]; then
+            echo "The review is empty."
+            exit 1
+          fi
+          if head -n 1 review/body.md | grep -q "^REVIEW-BLOCKED"; then
+            cat review/body.md
+            exit 1
+          fi
+          cp "$RUNNER_TEMP/review/criteria-status.txt" review/criteria-status.txt
+
+      - name: Upload Review
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: auto-review
+          path: review/
+          retention-days: 7
+          overwrite: true
+
+  publish:
+    needs: review
+    if: needs.review.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Download Review
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: auto-review
+          path: review
+
+      # The heading with the reviewed SHA and the run link come from here, not
+      # from the model.
+      - name: Post Comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
+        run: |
+          {
+            echo "## Авторевью \`$HEAD_SHA\`"
+            echo
+            echo "Проверен коммит $HEAD_SHA. [Прогон]($RUN_URL)."
+            if [ "$(cat review/criteria-status.txt)" != "present" ]; then
+              echo
+              echo "> В базовой ветке нет \`REVIEW.md\`, ревью шло без критериев проекта."
+            fi
+            echo
+            cat review/body.md
+          } > comment.md
+          gh pr comment "$PR_NUMBER" --body-file comment.md
