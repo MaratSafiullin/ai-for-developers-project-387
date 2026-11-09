@@ -52,7 +52,7 @@ test('guest gets 409 for a slot partially overlapping a meeting of another type'
 
     $response->assertConflict()
         ->assertExactJson([
-            'message' => 'Это время уже занято. Выберите другой слот.',
+            'message' => 'Это время только что заняли. Выберите другой слот.',
             'code' => 'slot_taken',
         ]);
     $this->assertDatabaseCount('meetings', 1);
