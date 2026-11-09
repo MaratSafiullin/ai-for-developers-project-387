@@ -139,9 +139,7 @@ function CancelMeetingButton({ meeting }: { meeting: Meeting }) {
                     queryKey: listOwnerMeetingsQueryKey(),
                 }),
                 queryClient.invalidateQueries({
-                    predicate: ({ queryKey }) =>
-                        (queryKey[0] as { _id?: string })._id ===
-                        'listGuestSlots',
+                    queryKey: [{ _id: 'listGuestSlots' }],
                 }),
             ]);
         },
