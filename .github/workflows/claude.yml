@@ -47,6 +47,8 @@ jobs:
   # nothing.
   # The trusted filter is written out in the concurrency group and in the if
   # of every job; a change to it goes to all copies.
+  # The counter finds the jobs by their names, which are the job ids budget
+  # and claude: do not give these jobs a name, or the budget stops counting.
   budget:
     if: >-
       (github.event_name == 'pull_request_review_comment' || github.event.issue.pull_request) &&
