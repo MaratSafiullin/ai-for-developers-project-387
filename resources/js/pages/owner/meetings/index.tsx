@@ -1,12 +1,29 @@
 import { Head, usePage } from '@inertiajs/react';
-import { useQuery } from '@tanstack/react-query';
-import { listOwnerMeetingsOptions } from '@/api/@tanstack/react-query.gen';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import {
+    cancelOwnerMeetingMutation,
+    listOwnerMeetingsOptions,
+    listOwnerMeetingsQueryKey,
+} from '@/api/@tanstack/react-query.gen';
 import type { Meeting } from '@/api/types.gen';
 import { AppLayout } from '@/layouts/app-layout';
+import { apiErrorMessage } from '@/lib/api-errors';
 import { formatDate, formatTime } from '@/lib/date-time';
 import { OwnerNav } from '@/components/owner-nav';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function OwnerMeetingsIndex() {
@@ -84,6 +101,7 @@ function UpcomingMeetingList() {
  */
 function UpcomingMeetingCard({ meeting }: { meeting: Meeting }) {
     const { timezone } = usePage().props;
+    const hasStarted = new Date(meeting.startsAt).getTime() <= Date.now();
 
     return (
         <Card>
@@ -99,7 +117,90 @@ function UpcomingMeetingCard({ meeting }: { meeting: Meeting }) {
                     <dt className="text-muted-foreground">Гость</dt>
                     <dd>{meeting.guestName}</dd>
                 </dl>
+                {hasStarted ? null : <CancelMeetingButton meeting={meeting} />}
             </CardHeader>
         </Card>
+    );
+}
+
+/**
+ * A button with a confirmation dialog that cancels the meeting. The list is
+ * refreshed after both success and failure, so it never shows stale data.
+ */
+function CancelMeetingButton({ meeting }: { meeting: Meeting }) {
+    const { timezone } = usePage().props;
+    const [open, setOpen] = useState(false);
+    const queryClient = useQueryClient();
+    const { mutate, isPending } = useMutation({
+        ...cancelOwnerMeetingMutation(),
+        onSettled: async () => {
+            await Promise.all([
+                queryClient.invalidateQueries({
+                    queryKey: listOwnerMeetingsQueryKey(),
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: [{ _id: 'listGuestSlots' }],
+                }),
+            ]);
+        },
+    });
+
+    function handleConfirm() {
+        mutate(
+            { path: { id: meeting.id } },
+            {
+                onSettled: () => setOpen(false),
+                onSuccess: () => {
+                    toast.success('Встреча отменена');
+                },
+                onError: (error) => {
+                    toast.error(
+                        apiErrorMessage(
+                            error,
+                            'Не удалось отменить встречу. Попробуйте ещё раз.',
+                        ),
+                    );
+                },
+            },
+        );
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="self-start">
+                    Отменить встречу
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Отменить встречу?</DialogTitle>
+                    <DialogDescription>
+                        {meeting.guestName},{' '}
+                        {formatDate(meeting.startsAt, timezone)},{' '}
+                        {formatTime(meeting.startsAt, timezone)}–
+                        {formatTime(meeting.endsAt, timezone)}. Встреча будет
+                        удалена, время снова станет свободным. Действие нельзя
+                        отменить.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button
+                        variant="outline"
+                        onClick={() => setOpen(false)}
+                        disabled={isPending}
+                    >
+                        Закрыть
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        onClick={handleConfirm}
+                        disabled={isPending}
+                    >
+                        {isPending ? 'Отменяем…' : 'Отменить встречу'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }

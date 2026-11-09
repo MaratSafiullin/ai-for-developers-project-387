@@ -152,6 +152,16 @@ model SlotTakenError {
 }
 
 /**
+ * The meeting has already started or is over, so it cannot be cancelled.
+ */
+@error
+model MeetingStartedError {
+    @statusCode statusCode: 409;
+    message: string;
+    code: "meeting_started";
+}
+
+/**
  * Resource not found.
  */
 @error
@@ -243,4 +253,16 @@ namespace Owner {
     @get
     @operationId("listOwnerMeetings")
     op listMeetings(): MeetingList;
+
+    /**
+     * Cancel an upcoming meeting: it is deleted and its time becomes a free slot again.
+     * Answers 404 for an unknown or already cancelled meeting and 409 once the meeting
+     * has started.
+     */
+    @route("/meetings/{id}")
+    @delete
+    @operationId("cancelOwnerMeeting")
+    op cancelMeeting(@path id: int32): {
+        @statusCode statusCode: 204;
+    } | NotFoundError | MeetingStartedError;
 }

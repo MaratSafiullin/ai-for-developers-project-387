@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateGuestMeetingData, CreateGuestMeetingErrors, CreateGuestMeetingResponses, CreateOwnerMeetingTypeData, CreateOwnerMeetingTypeErrors, CreateOwnerMeetingTypeResponses, ListGuestMeetingTypesData, ListGuestMeetingTypesResponses, ListGuestSlotsData, ListGuestSlotsErrors, ListGuestSlotsResponses, ListOwnerMeetingsData, ListOwnerMeetingsResponses, ListOwnerMeetingTypesData, ListOwnerMeetingTypesResponses } from './types.gen';
+import type { CancelOwnerMeetingData, CancelOwnerMeetingErrors, CancelOwnerMeetingResponses, CreateGuestMeetingData, CreateGuestMeetingErrors, CreateGuestMeetingResponses, CreateOwnerMeetingTypeData, CreateOwnerMeetingTypeErrors, CreateOwnerMeetingTypeResponses, ListGuestMeetingTypesData, ListGuestMeetingTypesResponses, ListGuestSlotsData, ListGuestSlotsErrors, ListGuestSlotsResponses, ListOwnerMeetingsData, ListOwnerMeetingsResponses, ListOwnerMeetingTypesData, ListOwnerMeetingTypesResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -65,3 +65,10 @@ export const createOwnerMeetingType = <ThrowOnError extends boolean = false>(opt
  * Meetings of all types that have not ended yet, sorted by `startsAt`, then by `id`.
  */
 export const listOwnerMeetings = <ThrowOnError extends boolean = false>(options?: Options<ListOwnerMeetingsData, ThrowOnError>): RequestResult<ListOwnerMeetingsResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListOwnerMeetingsResponses, unknown, ThrowOnError>({ url: '/api/owner/v1/meetings', ...options });
+
+/**
+ * Cancel an upcoming meeting: it is deleted and its time becomes a free slot again.
+ * Answers 404 for an unknown or already cancelled meeting and 409 once the meeting
+ * has started.
+ */
+export const cancelOwnerMeeting = <ThrowOnError extends boolean = false>(options: Options<CancelOwnerMeetingData, ThrowOnError>): RequestResult<CancelOwnerMeetingResponses, CancelOwnerMeetingErrors, ThrowOnError> => (options.client ?? client).delete<CancelOwnerMeetingResponses, CancelOwnerMeetingErrors, ThrowOnError>({ url: '/api/owner/v1/meetings/{id}', ...options });

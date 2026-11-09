@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { createGuestMeeting, createOwnerMeetingType, listGuestMeetingTypes, listGuestSlots, listOwnerMeetings, listOwnerMeetingTypes, type Options } from '../sdk.gen';
-import type { CreateGuestMeetingData, CreateGuestMeetingError, CreateGuestMeetingResponse, CreateOwnerMeetingTypeData, CreateOwnerMeetingTypeError, CreateOwnerMeetingTypeResponse, ListGuestMeetingTypesData, ListGuestMeetingTypesResponse, ListGuestSlotsData, ListGuestSlotsError, ListGuestSlotsResponse, ListOwnerMeetingsData, ListOwnerMeetingsResponse, ListOwnerMeetingTypesData, ListOwnerMeetingTypesResponse } from '../types.gen';
+import { cancelOwnerMeeting, createGuestMeeting, createOwnerMeetingType, listGuestMeetingTypes, listGuestSlots, listOwnerMeetings, listOwnerMeetingTypes, type Options } from '../sdk.gen';
+import type { CancelOwnerMeetingData, CancelOwnerMeetingError, CancelOwnerMeetingResponse, CreateGuestMeetingData, CreateGuestMeetingError, CreateGuestMeetingResponse, CreateOwnerMeetingTypeData, CreateOwnerMeetingTypeError, CreateOwnerMeetingTypeResponse, ListGuestMeetingTypesData, ListGuestMeetingTypesResponse, ListGuestSlotsData, ListGuestSlotsError, ListGuestSlotsResponse, ListOwnerMeetingsData, ListOwnerMeetingsResponse, ListOwnerMeetingTypesData, ListOwnerMeetingTypesResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -148,3 +148,22 @@ export const listOwnerMeetingsOptions = (options?: Options<ListOwnerMeetingsData
     },
     queryKey: listOwnerMeetingsQueryKey(options)
 });
+
+/**
+ * Cancel an upcoming meeting: it is deleted and its time becomes a free slot again.
+ * Answers 404 for an unknown or already cancelled meeting and 409 once the meeting
+ * has started.
+ */
+export const cancelOwnerMeetingMutation = (options?: Partial<Options<CancelOwnerMeetingData>>): UseMutationOptions<CancelOwnerMeetingResponse, CancelOwnerMeetingError, Options<CancelOwnerMeetingData>> => {
+    const mutationOptions: UseMutationOptions<CancelOwnerMeetingResponse, CancelOwnerMeetingError, Options<CancelOwnerMeetingData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await cancelOwnerMeeting({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
