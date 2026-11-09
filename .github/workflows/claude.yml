@@ -165,7 +165,11 @@ jobs:
       pull-requests: read
     env:
       # implement-spec builds several tickets test-first and ends with a review.
-      AGENT_TIMEOUT_MINUTES: '60'
+      # The repository variable AGENT_TIMEOUT_MINUTES overrides the default
+      # without a change to this file: claude-code-action refuses to run when
+      # the workflow file differs from the default branch, so a pull request
+      # cannot try out another value. Keep it below the job timeout.
+      AGENT_TIMEOUT_MINUTES: ${{ vars.AGENT_TIMEOUT_MINUTES || '60' }}
     outputs:
       reason: ${{ steps.outcome.outputs.reason }}
 
