@@ -50,6 +50,14 @@ export type MeetingList = {
 };
 
 /**
+ * The meeting has already started or is over, so it cannot be cancelled.
+ */
+export type MeetingStartedError = {
+    message: string;
+    code: 'meeting_started';
+};
+
+/**
  * Meeting type: a call template with a name, an optional description, and a duration.
  */
 export type MeetingType = {
@@ -275,3 +283,34 @@ export type ListOwnerMeetingsResponses = {
 };
 
 export type ListOwnerMeetingsResponse = ListOwnerMeetingsResponses[keyof ListOwnerMeetingsResponses];
+
+export type CancelOwnerMeetingData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/api/owner/v1/meetings/{id}';
+};
+
+export type CancelOwnerMeetingErrors = {
+    /**
+     * Resource not found.
+     */
+    404: NotFoundError;
+    /**
+     * The meeting has already started or is over, so it cannot be cancelled.
+     */
+    409: MeetingStartedError;
+};
+
+export type CancelOwnerMeetingError = CancelOwnerMeetingErrors[keyof CancelOwnerMeetingErrors];
+
+export type CancelOwnerMeetingResponses = {
+    /**
+     * There is no content to send for this request, but the headers may be useful.
+     */
+    204: void;
+};
+
+export type CancelOwnerMeetingResponse = CancelOwnerMeetingResponses[keyof CancelOwnerMeetingResponses];

@@ -17,4 +17,5 @@ Route::prefix('owner/v1')->name('api.owner.v1.')->group(function () {
     Route::get('meeting-types', [OwnerMeetingTypeController::class, 'index'])->name('meeting-types.index');
     Route::post('meeting-types', [OwnerMeetingTypeController::class, 'store'])->name('meeting-types.store');
     Route::get('meetings', [OwnerMeetingController::class, 'index'])->name('meetings.index');
+    Route::delete('meetings/{id}', [OwnerMeetingController::class, 'destroy'])->whereNumber('id')->name('meetings.destroy');
 });

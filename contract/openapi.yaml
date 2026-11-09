@@ -144,6 +144,37 @@ paths:
                 $ref: '#/components/schemas/MeetingList'
       tags:
         - owner
+  /api/owner/v1/meetings/{id}:
+    delete:
+      operationId: cancelOwnerMeeting
+      description: |-
+        Cancel an upcoming meeting: it is deleted and its time becomes a free slot again.
+        Answers 404 for an unknown or already cancelled meeting and 409 once the meeting
+        has started.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+        '404':
+          description: Resource not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+        '409':
+          description: The meeting has already started or is over, so it cannot be cancelled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingStartedError'
+      tags:
+        - owner
 components:
   schemas:
     CreateMeetingRequest:
@@ -234,6 +265,19 @@ components:
           items:
             $ref: '#/components/schemas/Meeting'
       description: Upcoming meetings of all types, nearest first.
+    MeetingStartedError:
+      type: object
+      required:
+        - message
+        - code
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum:
+            - meeting_started
+      description: The meeting has already started or is over, so it cannot be cancelled.
     MeetingType:
       type: object
       required:

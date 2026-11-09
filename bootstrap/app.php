@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\MeetingStartedException;
 use App\Exceptions\SlotTakenException;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -28,7 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->dontReport(SlotTakenException::class);
+        $exceptions->dontReport([SlotTakenException::class, MeetingStartedException::class]);
 
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),

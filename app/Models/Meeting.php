@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A guest's confirmed booking of an interval for a meeting type. Never
- * cancelled or moved. Times are stored in UTC.
+ * moved; the owner can cancel it before it starts. Times are stored in UTC.
  *
  * @property int $id
  * @property int $meeting_type_id
