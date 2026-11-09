@@ -7,8 +7,9 @@ on:
     types: [created]
 
 # The Claude GitHub App token, obtained through the OIDC exchange, posts the
-# comments, pushes branches and opens pull requests. The workflow token only serves `gh` in the
-# issue tracker skills, so it gets nothing beyond issue and pull request access.
+# comments, pushes branches and opens pull requests. The workflow token only
+# serves `gh` in the issue tracker skills, so it gets nothing beyond issue and
+# pull request access.
 # It is scoped to this repository, so `gh api`, which links sub-issues and
 # blocking dependencies, cannot write anywhere else or go past these scopes.
 permissions:
@@ -61,7 +62,9 @@ jobs:
           node-version-file: .nvmrc
 
       # Feature tests render the Inertia root view, which needs the Vite
-      # manifest, and the contract generator needs the npm packages.
+      # manifest, and the contract generator needs the npm packages. These
+      # steps take the parts of `composer setup` the agent needs: it migrates no
+      # database (tests use SQLite in memory) and installs no Playwright.
       - name: Install JS Dependencies and Build Frontend
         run: |
           npm ci
@@ -80,6 +83,7 @@ jobs:
       # action with the Claude App token, so the pull request comes from
       # claude[bot] and starts CI and the automatic review without approval.
       - name: Run Claude
+        id: claude
         uses: anthropics/claude-code-action@c0949c50a78c1ec8ce2647db36629b870e715d0c # v1.0.268
         env:
           GH_TOKEN: ${{ github.token }}
@@ -91,20 +95,20 @@ jobs:
           plugins: mattpocock-skills@claude-plugins-official
           claude_args: |
             --model claude-sonnet-5-5
-            --allowedTools "Skill,Agent,Task,Edit,Write,mcp__github__create_pull_request,Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh issue create:*),Bash(gh issue comment:*),Bash(gh issue edit:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(php artisan test:*),Bash(php artisan make:*),Bash(vendor/bin/pint:*),Bash(vendor/bin/phpstan:*),Bash(npm run contract:generate),Bash(npm run build)"
+            --allowedTools "Skill,Agent,Task,Edit,Write,mcp__github__create_pull_request,Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh issue create:*),Bash(gh issue comment:*),Bash(gh issue edit:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(php artisan test:*),Bash(php artisan make:*),Bash(vendor/bin/pint:*),Bash(vendor/bin/phpstan:*),Bash(npm run contract:generate),Bash(npm run build),Bash(npm run check:fix)"
             --append-system-prompt 'Rules for running in GitHub Actions in this repository.
 
             Code changes and tests:
-            - Build code changes test-first with the tdd skill. Run the narrow checks while working: php artisan test --compact <path>, vendor/bin/pint --dirty --format agent, vendor/bin/phpstan analyse --memory-limit=1G.
+            - Build code changes test-first with the tdd skill. Run the narrow checks while working: php artisan test --compact <path>, vendor/bin/pint --dirty --format agent, vendor/bin/phpstan analyse --memory-limit=1G, and npm run check:fix after TS or React changes.
             - After editing contract/main.tsp, run npm run contract:generate and commit the regenerated contract/openapi.yaml and resources/js/api/.
             - If a new page or route needs a fresh Vite manifest or Wayfinder routes, run npm run build.
             - Browser tests and the full composer ci:check are not run here: CI runs them on the pull request.
-            - Commit messages follow AGENTS.md: Conventional Commits, Russian description, the issue number in parentheses at the end. A change made in response to review of unreleased code never gets the fix type.
+            - Write commit messages by the Commit Messages rules in AGENTS.md.
 
             Pull requests:
             - When you were triggered from an issue and changed code, open the pull request yourself with mcp__github__create_pull_request: base main, head the current branch, not a draft. Open exactly one, at the very end, after all commits are pushed. Put its link in your comment instead of a Create a PR link.
             - When you were triggered from a pull request, push to its branch and never open another pull request.
-            - Write the title in the commit message format and the body from .github/pull_request_template.md: keep its headings and order, fill every section, add all links the Контекст hint asks for and a Closes line for each issue the pull request completes. Follow the Pull Requests rules in AGENTS.md.
+            - Write the title and the body by the Pull Requests rules in AGENTS.md: the body follows .github/pull_request_template.md. In Evidence, list the checks you ran here with their results.
 
             implement-spec:
             - The skill cannot be invoked through the Skill tool. Open its SKILL.md in the installed mattpocock-skills plugin and follow it with these adaptations.
@@ -112,3 +116,27 @@ jobs:
             - Subagents are allowed, for example for exploration. No worktrees, no per-ticket branches, no merges.
             - Keep the final code-review step and commit the fixes it calls for.
             - Instead of the draft pull request of the skill, open the single pull request described above once all tickets and the review fixes are committed.'
+
+      # With show_full_output: false the action logs no tool calls. This step
+      # prints the tools the agent called and its Bash commands, without their
+      # output, so the log shows which tests and checks ran. Tool output could
+      # hold secrets and the log of a public repository is public.
+      # A failed run may not set the output, but the action still writes the
+      # file at its default path in RUNNER_TEMP.
+      - name: List Agent Tool Calls
+        if: always()
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          EXECUTION_FILE="${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}"
+          if [ ! -f "$EXECUTION_FILE" ]; then
+            echo "No execution file at $EXECUTION_FILE."
+            exit 0
+          fi
+          jq -r '
+            .[]
+            | select(.type == "assistant")
+            | .message.content[]?
+            | select(.type == "tool_use")
+            | if .name == "Bash" then "Bash: \(.input.command)" else .name end
+          ' "$EXECUTION_FILE"

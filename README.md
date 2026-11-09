@@ -250,13 +250,15 @@ php artisan boost:update
 
 **Права.** Комментарии, push и создание PR делает токен Claude GitHub App: экшен получает его обменом OIDC-токена, поэтому у задания `id-token: write`. PR создаётся через GitHub MCP-сервер экшена (`mcp__github__create_pull_request`), который работает с этим же токеном. Поэтому PR агента, в отличие от PR от `GITHUB_TOKEN`, сразу запускает CI и авторевью, без «Approve workflows to run». Токен воркфлоу (`GITHUB_TOKEN`) получает только `contents: read`, `issues: write` и `pull-requests: read`: он передаётся в `GH_TOKEN`, чтобы `gh` в скиллах трекера мог читать и создавать issues и читать PR. У `actions/checkout` стоит `persist-credentials: false`, экшен сам настраивает push токеном приложения. Агенту разрешены (`claude_args --allowedTools`):
 
-- `Skill`, `Agent` (субагенты), `Edit`, `Write`;
+- `Skill`, `Agent` и `Task` (субагенты, прежнее имя инструмента оставлено на всякий случай), `Edit`, `Write`;
 - `mcp__github__create_pull_request`;
 - `gh issue view|list|create|comment|edit`, `gh pr view|diff` и `gh api`. `gh api` нужен скиллу `to-tickets`, чтобы связывать тикеты как sub-issues и проставлять зависимости «blocked by». За пределы репозитория и прав `GITHUB_TOKEN` он не выходит;
 - `git status|diff|log`, а коммит и push экшен разрешает сам;
-- `php artisan test`, `php artisan make:*`, `vendor/bin/pint`, `vendor/bin/phpstan`, `npm run contract:generate` и `npm run build`: тесты по TDD, стиль, статический анализ, генерация контракта и SDK, сборка манифеста Vite и маршрутов Wayfinder.
+- `php artisan test`, `php artisan make:*`, `vendor/bin/pint`, `vendor/bin/phpstan`, `npm run contract:generate`, `npm run build` и `npm run check:fix`: тесты по TDD, стиль PHP, статический анализ, генерация контракта и SDK, сборка манифеста Vite и маршрутов Wayfinder, линтер и формат TS/React.
 
 Для этого задание ставит PHP-зависимости, Node и npm-зависимости, собирает фронтенд (feature-тестам нужен манифест Vite) и включает `.githooks`, чтобы хук `commit-msg` проверял коммиты агента. Браузерные тесты и полный `composer ci:check` агент не запускает: их выполняет `tests.yml` в PR, как для любой ветки.
+
+**Что видно в журнале.** При `show_full_output: false` экшен не пишет в журнал вызовы инструментов. Поэтому после агента шаг «List Agent Tool Calls» печатает из файла выполнения экшена список вызванных инструментов и команд Bash, без их вывода. По нему видно, какие тесты и проверки запускал агент. Вывод команд в журнал не попадает: в нём могут оказаться секреты, а журнал открытого репозитория публичный.
 
 **Безопасность.** Воркфлоу не использует `pull_request_target`: комментарии из fork не получают ни ключа, ни права записи, потому что их авторы не проходят фильтр `author_association`. Ключ хранится только в секретах. Экшен закреплён хешем коммита, его обновления предлагает Dependabot.
 
