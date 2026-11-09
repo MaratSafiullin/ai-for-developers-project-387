@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\Owner\V1;
 
-use App\Exceptions\MeetingStartedException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\MeetingResource;
 use App\Models\Meeting;
@@ -26,16 +25,10 @@ class MeetingController extends Controller
 
     /**
      * Cancel an upcoming meeting by deleting it; its cells go with it.
-     *
-     * @throws MeetingStartedException when the meeting starts now or earlier
      */
     public function destroy(int $id): Response
     {
         $meeting = Meeting::query()->find($id) ?? abort(404, __('Meeting not found.'));
-
-        if ($meeting->hasStarted()) {
-            throw new MeetingStartedException;
-        }
 
         $meeting->delete();
 
