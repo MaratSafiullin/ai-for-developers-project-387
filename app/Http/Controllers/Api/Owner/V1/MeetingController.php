@@ -33,7 +33,7 @@ class MeetingController extends Controller
     {
         $meeting = Meeting::query()->find($id) ?? abort(404, __('Meeting not found.'));
 
-        if ($meeting->starts_at->lte(now())) {
+        if ($meeting->hasStarted()) {
             throw new MeetingStartedException;
         }
 

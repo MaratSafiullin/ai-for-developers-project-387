@@ -48,6 +48,14 @@ class Meeting extends Model
     }
 
     /**
+     * Determine whether the meeting starts now or has already started.
+     */
+    public function hasStarted(): bool
+    {
+        return $this->starts_at->lte(now());
+    }
+
+    /**
      * Store a cell for every 15 minutes of the meeting. Fails with a unique
      * constraint violation when the interval overlaps another meeting, so a
      * booking must create the meeting and call this in one transaction (ADR 0002).

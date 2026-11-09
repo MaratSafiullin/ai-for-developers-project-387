@@ -150,12 +150,11 @@ function CancelMeetingButton({ meeting }: { meeting: Meeting }) {
         mutate(
             { path: { id: meeting.id } },
             {
+                onSettled: () => setOpen(false),
                 onSuccess: () => {
-                    setOpen(false);
                     toast.success('Встреча отменена');
                 },
                 onError: (error) => {
-                    setOpen(false);
                     toast.error(
                         apiErrorMessage(
                             error,
