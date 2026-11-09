@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import {
     cancelOwnerMeetingMutation,
-    listGuestSlotsQueryKey,
     listOwnerMeetingsOptions,
     listOwnerMeetingsQueryKey,
 } from '@/api/@tanstack/react-query.gen';
@@ -140,7 +139,9 @@ function CancelMeetingButton({ meeting }: { meeting: Meeting }) {
                     queryKey: listOwnerMeetingsQueryKey(),
                 }),
                 queryClient.invalidateQueries({
-                    queryKey: listGuestSlotsQueryKey(),
+                    predicate: ({ queryKey }) =>
+                        (queryKey[0] as { _id?: string })._id ===
+                        'listGuestSlots',
                 }),
             ]);
         },
