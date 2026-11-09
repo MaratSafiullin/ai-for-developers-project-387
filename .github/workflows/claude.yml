@@ -125,6 +125,8 @@ jobs:
       # file at its default path in RUNNER_TEMP.
       - name: List Agent Tool Calls
         if: always()
+        # Logging only: an unreadable file must not fail the agent's job.
+        continue-on-error: true
         env:
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
         run: |
