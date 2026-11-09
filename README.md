@@ -255,7 +255,7 @@ php artisan boost:update
 - `mcp__github__create_pull_request`;
 - `gh issue view|list|create|comment|edit`, `gh pr view|diff` и `gh api`. `gh api` нужен скиллу `to-tickets`, чтобы связывать тикеты как sub-issues и проставлять зависимости «blocked by». За пределы репозитория и прав `GITHUB_TOKEN` он не выходит;
 - `git status|diff|log`, а коммит и push экшен разрешает сам;
-- `php artisan test`, `php artisan make:*`, `vendor/bin/pint`, `vendor/bin/phpstan`, `npm run contract:generate`, `npm run build` и `npm run check:fix`: тесты по TDD, стиль PHP, статический анализ, генерация контракта и SDK, сборка манифеста Vite и маршрутов Wayfinder, линтер и формат TS/React.
+- `php artisan test`, `php artisan make:*`, `vendor/bin/pint`, `vendor/bin/phpstan`, `npm run contract:generate`, `npm run build`, `npm run check:fix` и `npm run types:check`: тесты по TDD, стиль PHP, статический анализ, генерация контракта и SDK, сборка манифеста Vite и маршрутов Wayfinder, линтер и формат TS/React, проверка типов TS.
 
 Для этого задание ставит PHP-зависимости, Node и npm-зависимости, собирает фронтенд (feature-тестам нужен манифест Vite) и включает `.githooks`, чтобы хук `commit-msg` проверял коммиты агента. Браузерные тесты и полный `composer ci:check` агент не запускает: их выполняет `tests.yml` в PR, как для любой ветки.
 
