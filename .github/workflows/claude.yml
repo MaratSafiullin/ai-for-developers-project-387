@@ -45,6 +45,8 @@ jobs:
   # the budget, including cancelled, timed-out and re-run attempts. Untrusted
   # comments and runs refused by the budget skip the agent job and cost
   # nothing.
+  # The trusted filter is written out in the concurrency group and in the if
+  # of every job; a change to it goes to all copies.
   budget:
     if: >-
       (github.event_name == 'pull_request_review_comment' || github.event.issue.pull_request) &&
@@ -82,18 +84,26 @@ jobs:
 
           used=0
           while read -r run_id; do
-            # filter=all lists the jobs of every attempt of the run. The
-            # current attempt is excluded: its agent job is still pending.
+            # filter=all lists the jobs of every attempt of the run. An attempt
+            # counts when its own budget check succeeded and its agent job was
+            # not skipped, so a run cancelled while still queued costs
+            # nothing. The current attempt is excluded: its agent job is still
+            # pending.
             count=$(gh api --paginate --method GET "repos/$REPO/actions/runs/$run_id/jobs" \
               -f filter=all -f per_page=100 \
               | jq -s \
                 --argjson run "$run_id" \
                 --argjson current_run "$RUN_ID" \
                 --argjson current_attempt "$RUN_ATTEMPT" \
-                '[.[].jobs[]
-                  | select(.name == "claude" and .conclusion != "skipped")
-                  | select($run != $current_run or .run_attempt != $current_attempt)]
-                 | unique_by(.id) | length')
+                '[.[].jobs[]]
+                 | unique_by(.id)
+                 | group_by(.run_attempt)
+                 | map(select(
+                     ($run != $current_run or .[0].run_attempt != $current_attempt) and
+                     any(.[]; .name == "budget" and .conclusion == "success") and
+                     any(.[]; .name == "claude" and .conclusion != "skipped")
+                   ))
+                 | length')
             echo "Run $run_id: $count admitted attempt(s)."
             used=$((used + count))
           done < runs.txt
@@ -210,6 +220,12 @@ jobs:
       - name: Enable Git Hooks
         run: git config core.hooksPath .githooks
 
+      # Classify Outcome tells a timeout of the agent step by the time elapsed
+      # since here.
+      - name: Record Agent Start
+        id: start
+        run: echo "at=$(date +%s)" >> "$GITHUB_OUTPUT"
+
       # Mention (tag) mode: the comment is the task, the appended system prompt
       # adds the rules of this repository. The text is single-quoted for the
       # action's shell-quote parser: inside it there are no apostrophes, no
@@ -217,10 +233,6 @@ jobs:
       # mcp__github__create_pull_request turns on the GitHub MCP server of the
       # action with the Claude App token, so the pull request comes from
       # claude[bot] and starts CI and the automatic review without approval.
-      - name: Record Agent Start
-        id: start
-        run: echo "at=$(date +%s)" >> "$GITHUB_OUTPUT"
-
       - name: Run Claude
         id: claude
         timeout-minutes: ${{ fromJSON(env.AGENT_TIMEOUT_MINUTES) }}
@@ -336,9 +348,9 @@ jobs:
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
           BUDGET_RESULT: ${{ needs.budget.result }}
-          ALLOWED: ${{ needs.budget.outputs.allowed }}
-          USED: ${{ needs.budget.outputs.used }}
-          LIMIT: ${{ needs.budget.outputs.limit }}
+          BUDGET_ALLOWED: ${{ needs.budget.outputs.allowed }}
+          BUDGET_USED: ${{ needs.budget.outputs.used }}
+          BUDGET_LIMIT: ${{ needs.budget.outputs.limit }}
           AGENT_RESULT: ${{ needs.claude.result }}
           AGENT_REASON: ${{ needs.claude.outputs.reason }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
@@ -346,9 +358,9 @@ jobs:
           if [ "$BUDGET_RESULT" != "success" ]; then
             reason=infra
             details="Проверка бюджета не завершилась ($BUDGET_RESULT), агент не запускался."
-          elif [ "$ALLOWED" != "true" ]; then
+          elif [ "$BUDGET_ALLOWED" != "true" ]; then
             reason=limit_exhausted
-            details="Бюджет PR исчерпан: использовано $USED из $LIMIT допущенных запусков агента. Модель не вызывалась."
+            details="Бюджет PR исчерпан: использовано $BUDGET_USED из $BUDGET_LIMIT допущенных запусков агента. Модель не вызывалась."
           elif [ "$AGENT_RESULT" = "success" ]; then
             echo "The agent succeeded and answers itself. No report."
             exit 0
@@ -356,21 +368,21 @@ jobs:
             reason=infra
             details="Агент не запускался: проверка бюджета была из прошлой попытки прогона. Перезапускайте прогон целиком (Re-run all jobs), а не только упавшие задания."
           else
+            # A job cancelled or lost before Classify Outcome leaves no reason.
             case "$AGENT_REASON" in
               timeout)
+                reason=timeout
                 details="Агент не уложился в тайм-аут шага и был остановлен."
                 ;;
               agent_failed)
+                reason=agent_failed
                 details="Агент завершился с ошибкой или был отменён."
                 ;;
               *)
+                reason=infra
                 details="Сбой подготовки задания агента ($AGENT_RESULT): не установлены зависимости, нет ключа модели или задание было прервано."
                 ;;
             esac
-            reason="${AGENT_REASON:-infra}"
-            if [ "$reason" = "success" ]; then
-              reason=infra
-            fi
           fi
 
           head_sha=$(gh pr view "$PR_NUMBER" --json headRefOid --jq .headRefOid)
@@ -384,8 +396,8 @@ jobs:
             echo "- Причина: \`$reason\`"
             echo "- Последний SHA ветки PR: \`$head_sha\`"
             echo "- Логи: [прогон]($RUN_URL)"
-            if [ -n "$USED" ]; then
-              echo "- Бюджет: до этого запуска использовано $USED из $LIMIT допущенных запусков агента"
+            if [ -n "$BUDGET_USED" ]; then
+              echo "- Бюджет: до этого запуска использовано $BUDGET_USED из $BUDGET_LIMIT допущенных запусков агента"
             fi
           } > report.md
           cat report.md
