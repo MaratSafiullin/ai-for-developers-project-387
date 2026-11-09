@@ -164,8 +164,8 @@ jobs:
       issues: write
       pull-requests: read
     env:
-      # implement-spec builds several tickets test-first and ends with a review.
-      AGENT_TIMEOUT_MINUTES: '60'
+      # Training PR C only: a one-minute limit to check the timeout report.
+      AGENT_TIMEOUT_MINUTES: '1'
     outputs:
       reason: ${{ steps.outcome.outputs.reason }}
 
