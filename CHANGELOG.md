@@ -1,5 +1,43 @@
 # Changelog
 
+## [0.2.0](https://github.com/MaratSafiullin/ai-for-developers-project-387/compare/v0.1.2...v0.2.0) (2026-11-09)
+
+
+### Features
+
+* **api:** отмена предстоящей встречи владельцем ([#16](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/16)) ([f5be82b](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/f5be82ba94765c0b6b89e8ea228f98bdb6d46249))
+* кнопка отмены встречи на странице владельца ([#17](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/17)) ([87e4f9f](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/87e4f9fbf4389f06eaf70ad8f394aace3e31d9a3))
+* отмена предстоящей встречи владельцем ([#15](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/15)) ([7739605](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/7739605e178665ff79504b809f71dc1d03f05c7c))
+* уточнить сообщение о только что занятом времени ([#37](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/37)) ([fd7b5f3](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/fd7b5f343e7403d201f951e296bea62ad9128766))
+* уточнить сообщение о только что занятом времени ([#37](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/37)) ([95c381d](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/95c381d1ee39543b75d026adde0b2f6ea00d41fd))
+
+
+### Bug Fixes
+
+* **ci:** разрешить автотриажу чтение скилла и кода ([#11](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/11)) ([d7f5f5a](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/d7f5f5a648124538a26ed2f2d8def8e4eec9e120))
+* **ci:** разрешить автотриажу чтение скилла и кода ([#11](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/11)) ([d4a5684](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/d4a5684d9e579035e937aa5c09745d5b5569bf8e))
+
+
+### Code Refactoring
+
+* вынести проверку начала встречи в модель ([#16](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/16)) ([bea0436](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/bea04367ded31c6a081e237cb23148b4782ce362))
+* инвалидировать все слоты гостя по предикату ([#17](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/17)) ([053c857](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/053c8573fabfe36dffcd557f24471fd72743ce52))
+* инвалидировать слоты гостя по частичному ключу ([#17](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/17)) ([04a4dac](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/04a4dacb1c600a89283634edcbabf72ecef328b3))
+
+
+### Documentation
+
+* добавить примеры команд агенту в README ([#6](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/6)) ([a3d97ce](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/a3d97ce11720140c7cea85e5cde6af6500006f60))
+* добавить примеры команд агенту в README ([#6](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/6)) ([9ffd775](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/9ffd77561df72e0a2393accd4e63ca10286365d1))
+* добавить шаблон PR и правила оформления для агента ([#26](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/26)) ([12b10b9](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/12b10b95a96bebd3d9528b364ea5539be0ed9fbc))
+* добавить шаблон PR и правила оформления для агента ([#26](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/26)) ([21891cf](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/21891cffa65de0b23aae2033aa65382d751c404a))
+* описать выключенную песочницу и REVIEW-BLOCKED в авторевью ([#25](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/25)) ([7f54fbd](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/7f54fbdb0a2fa540feb13077999e851e54108022))
+* описать ограничения бюджета для построчных вызовов агента ([#28](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/28)) ([568de56](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/568de56bbead2edd206b71bae01b30fcdc0acf0b))
+* описать песочницу ревьюера в README ([#25](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/25)) ([663678f](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/663678fb80702d8ca297d41604b68bce4e50bc3b))
+* ставить метку триажа при создании issue ([#11](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/11)) ([0297a7b](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/0297a7b483d7f20f5b97bc1c4cf22303966afd1a))
+* уточнить права и песочницу ревьюера в README ([#25](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/25)) ([b9370af](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/b9370af8ec212cee676c78e27caedc20227af785))
+* уточнить правила оформления PR по итогам ревью ([#26](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/26)) ([ff9f533](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/ff9f533f39d1eb040cb434c52fb2269a0ad9f276))
+
 ## [0.1.2](https://github.com/MaratSafiullin/ai-for-developers-project-387/compare/v0.1.1...v0.1.2) (2026-11-05)
 
 
