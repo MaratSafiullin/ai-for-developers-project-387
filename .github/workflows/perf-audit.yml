@@ -1,0 +1,269 @@
+name: perf-audit
+
+on:
+  # Monday, 06:17 Moscow time. Minute 17 keeps the run off the busy top of the
+  # hour; deploys only follow releases, so a daily run would mostly repeat.
+  schedule:
+    - cron: '17 6 * * 1'
+      timezone: Europe/Moscow
+  workflow_dispatch:
+    inputs:
+      report:
+        description: 'live measures the running app; training uses the committed training summary'
+        type: choice
+        options:
+          - live
+          - training
+        default: live
+
+# The job declares its own permissions.
+permissions: {}
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # The Claude GitHub App token, obtained through the OIDC exchange, runs the
+    # action. The workflow token only serves `gh`, which reads, creates and
+    # comments on issues; it gets no write access to code or pull requests.
+    # pull-requests: read lets `gh issue view` resolve the pull request that
+    # closed a finding issue; the agent has no `gh pr` tools.
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+      pull-requests: read
+    # Two audits at once could file the same finding twice.
+    concurrency:
+      group: perf-audit
+      cancel-in-progress: false
+    env:
+      # A scheduled run has no inputs and always measures the live app.
+      AUDIT_MODE: ${{ inputs.report || 'live' }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
+      # The guest pages to measure, the one list for Lighthouse CI and for the
+      # summary check that every page has a report.
+      AUDIT_PAGES: '["/", "/book"]'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      # Every report file goes to the ignored .audit directory. A step that
+      # cannot get data writes the reason to no-data.txt, and Build Summary
+      # turns it into a no-data summary instead of failing the job early.
+      - name: Prepare Audit Directory
+        run: mkdir -p .audit
+
+      - name: Setup Node
+        if: env.AUDIT_MODE == 'live'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      # The free Render service sleeps after 15 idle minutes. Waiting for /up
+      # keeps the cold start of the container out of the measurement.
+      - name: Wake App
+        id: wake
+        if: env.AUDIT_MODE == 'live'
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          if [ -z "$APP_URL" ]; then
+            echo "Переменная репозитория APP_URL не задана" > .audit/no-data.txt
+            cat .audit/no-data.txt
+            exit 0
+          fi
+          app_url="${APP_URL%/}"
+          deadline=$(( $(date +%s) + 180 ))
+          until curl --fail --silent --show-error --output /dev/null --max-time 30 "$app_url/up"; do
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "$app_url/up не ответил 200 за 3 минуты" > .audit/no-data.txt
+              cat .audit/no-data.txt
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "$app_url/up answered 200."
+          echo "app_url=$app_url" >> "$GITHUB_OUTPUT"
+
+      # Lighthouse CI writes its reports to .lighthouseci in the working
+      # directory, so it runs inside .audit. Three runs per page, Performance
+      # only, the default mobile preset.
+      - name: Run Lighthouse
+        if: steps.wake.outputs.app_url != ''
+        working-directory: .audit
+        env:
+          APP_URL: ${{ steps.wake.outputs.app_url }}
+        run: |
+          jq -n --arg base "$APP_URL" --argjson pages "$AUDIT_PAGES" '{
+            ci: {
+              collect: {
+                url: ($pages | map($base + .)),
+                numberOfRuns: 3,
+                settings: {onlyCategories: ["performance"]}
+              }
+            }
+          }' > lighthouserc.json
+          if ! npx --yes @lhci/cli@0.16.0 collect --config=lighthouserc.json; then
+            echo "Lighthouse CI завершился ошибкой" > no-data.txt
+          fi
+
+      - name: Build Summary
+        id: summary
+        env:
+          APP_URL: ${{ steps.wake.outputs.app_url || vars.APP_URL }}
+          SHA: ${{ github.sha }}
+        run: |
+          generated_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          app_url="${APP_URL%/}"
+          if [ "$AUDIT_MODE" = "training" ]; then
+            jq --arg generated_at "$generated_at" '.generated_at = $generated_at' \
+              .github/perf-audit/training-summary.json > .audit/summary.json
+          else
+            # summary.jq builds every live summary; a non-empty reason makes
+            # it a no-data summary without reading any report.
+            summarize() {
+              jq --arg base "$app_url" --arg mode live --arg sha "$SHA" --arg generated_at "$generated_at" \
+                --argjson expected "$AUDIT_PAGES" --arg reason "$1" -f .github/perf-audit/summary.jq "${@:2}"
+            }
+            # A failed Lighthouse CI may leave no .lighthouseci directory at all.
+            reports=$(find .audit/.lighthouseci -name 'lhr-*.json' 2> /dev/null | sort || true)
+            if [ ! -f .audit/no-data.txt ] && [ -z "$reports" ]; then
+              echo "Lighthouse CI не оставил отчётов" > .audit/no-data.txt
+            fi
+            if [ -f .audit/no-data.txt ]; then
+              summarize "$(cat .audit/no-data.txt)" -n > .audit/summary.json
+            else
+              # shellcheck disable=SC2086 # one path per report, without spaces
+              if ! summarize "" -s $reports > .audit/summary.json; then
+                summarize "Не удалось разобрать отчёты Lighthouse" -n > .audit/summary.json
+              fi
+            fi
+          fi
+          cat .audit/summary.json
+          echo "status=$(jq -r .status .audit/summary.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Audit
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: perf-audit-${{ env.AUDIT_MODE }}
+          path: .audit/
+          include-hidden-files: true
+          if-no-files-found: warn
+          # A re-run attempt uploads under the same name.
+          overwrite: true
+
+      # Prompt mode: the task is fixed here. Only the mode, the run link and the
+      # summary path go into the prompt; the agent reads the data from the file.
+      # The final answer is the verdict, which the next step copies into the job
+      # summary: the agent has no tool to write files.
+      - name: Run Claude
+        id: claude
+        if: ${{ !cancelled() && steps.summary.outcome == 'success' }}
+        timeout-minutes: 10
+        uses: anthropics/claude-code-action@c0949c50a78c1ec8ce2647db36629b870e715d0c # v1.0.268
+        env:
+          GH_TOKEN: ${{ github.token }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          show_full_output: false
+          prompt: |
+            You are the weekly page speed audit of repository ${{ github.repository }}. This run is unattended: nobody will answer, so do not ask questions.
+
+            Mode: ${{ env.AUDIT_MODE }}. Run link: ${{ env.RUN_URL }}. Summary: .audit/summary.json.
+
+            Write every issue title, body, comment and your final answer in Russian. Never change code, create branches or pull requests, reopen issues, or apply `ready-for-agent`.
+
+            ## Input
+
+            Read .audit/summary.json with the Read tool. It is the only source of data: never invent findings, pages or values. Fields: `mode`, `status` (`ok` or `no-data`), `reason` (why there is no data), `url` (checked app URL), `sha` (commit of `main`), `generated_at`, `pages` (path, runs, median metrics: `lcp` and `tbt` in ms, `cls` unitless) and `findings`. Each finding has a `key`, an English `title` and `description` from Lighthouse, and `pages` with a score and estimated savings or a metric value. Mode `training` means the summary is prepared training data, not a measurement.
+
+            ## Commands
+
+            Run each command on its own, without `;`, `&&`, shell pipes between commands or `$(...)`. A `|` inside a quoted `--jq` filter is part of the filter and is fine. Pass `--title` and `--body` values in single quotes, never in double quotes: backticks inside double quotes are command substitution and the command is denied. Avoid apostrophes in the texts.
+
+            Find audit issues with this exact command and nothing else, not `--search`: search splits keys on punctuation and may miss a just-created issue.
+            gh issue list --state all --limit 1000 --json number,state,title,body --jq '[.[] | select(.body | contains("<!-- perf-audit"))]'
+            A finding issue carries the marker `<!-- perf-audit: KEY -->` in its body, the log issue carries `<!-- perf-audit-log -->`. Match a marker only by exact substring of the body, never by a similar title or a similar key. Use `gh issue view N --json ...` with explicit fields, never the plain form.
+
+            ## Log issue
+
+            1. Find the log issue by its marker. If there is none, create it with title `Журнал аудита производительности` and a body in the format below with both rows empty (dash in every cell, state `verdict=none keys=`). You cannot close issues: the maintainer closes the new log issue by hand, so say in your final answer that it was created and needs closing. Find it by the marker in later runs whatever its state.
+            2. Its body has this format. Keep it exactly, replacing only the row and the state line of the current mode:
+
+            <!-- perf-audit-log -->
+            Журнал еженедельного аудита скорости страниц. Записи делает воркфлоу `perf-audit.yml`. Issue закрыто намеренно, чтобы служебная запись не висела среди открытых.
+
+            ## Последний запуск
+
+            | Режим | Дата | Прогон | Адрес | Вердикт | Issues находок |
+            | --- | --- | --- | --- | --- | --- |
+            | Живой | ... | ... | ... | ... | ... |
+            | Учебный | ... | ... | ... | ... | ... |
+
+            <!-- perf-audit-state live: verdict=... keys=... -->
+            <!-- perf-audit-state training: verdict=... keys=... -->
+
+            The row of the current mode gets the date from `generated_at`, the run link, the checked URL, the verdict and links to the finding issues, with «(вернулась)» after an issue created this run for a finding that came back. Verdict is `findings`, `clean` or `no-data`; keys are the sorted finding keys joined by commas, empty unless the verdict is `findings`. A training run never touches the live row or the live state line, and a live run never touches the training ones.
+
+            ## Steps
+
+            1. Read the summary and find or create the log issue.
+            2. If `status` is `no-data`: the verdict is «нет данных, это не подтверждает исправление» with the reason from the summary. Do not search, create or comment on finding issues. Go to step 4.
+            3. For each finding, look for issues with its exact marker:
+               For an open issue, the last known values are those of its latest audit comment, or of its body when there is none: read them with `gh issue view N --json body,comments`.
+               - an open issue exists and its pages and values match the last known ones: write nothing to it;
+               - an open issue exists and the pages or values changed noticeably against the last known ones (a page added or gone, a metric or savings changed by more than about 20 percent, a score changed): post one comment with only the changes;
+               - only closed issues exist: the problem is back. Take the most recently closed one, run `gh issue view N --json number,title,closedByPullRequestsReferences` and create a new issue that links the closed issue and the pull request that closed it. If the list of closing pull requests is empty, write that the issue was closed without a pull request. If the command fails, write that the closing pull request could not be read and name the error. Never reopen the closed issue;
+               - no issue exists: create a new issue.
+               A new issue is created with `gh issue create` and the labels `needs-triage` and `performance`; in mode `training` also `training`. Its body has the problem in plain words, the pages with their values or scores, a suggested action, the checked URL and the `sha`, links to the run and to the log issue, and the marker `<!-- perf-audit: KEY -->` on the last line. In mode `training` the title starts with `[Учебный] ` and the first line of the body says: «Учебная находка из учебной сводки: это не подтверждённый дефект приложения.»
+            4. Update the log issue body with `gh issue edit N --body '...'`: the row and the state line of the current mode. Then compare the new verdict and keys with the previous state line of the same mode. Only if either changed, or this run created an issue for a finding that came back, post one comment to the log issue with the date, the run link, the URL, the verdict, and the findings that appeared, came back or went away, with links to their issues. In mode `training` the comment starts with «Учебный запуск, данные из учебной сводки.»
+            5. Your final answer is the verdict for the job summary, in Russian Markdown: mode, checked URL, run link, verdict, and every finding with its key, title and issue link (created, known or back), or the reason when there is no data. Mark a training run as «Учебный запуск, данные из учебной сводки». If a command was denied or failed, say which one.
+          # Prompt mode adds no tools on its own. Read opens the summary; the gh
+          # forms cover the issue tracker only, without closing issues: the
+          # maintainer closes the log issue by hand once.
+          claude_args: >-
+            --model claude-sonnet-5-5
+            --allowedTools "Read,Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue create:*),Bash(gh issue comment:*),Bash(gh issue edit:*),Bash(gh label list:*)"
+
+      # With show_full_output: false the action logs no tool calls. This step
+      # prints the tools and gh commands the agent called, without their
+      # output, and copies the agent's final answer into the job summary.
+      # A failed run may not set the output, but the action still writes the
+      # file at its default path in RUNNER_TEMP.
+      - name: Write Job Summary
+        if: ${{ !cancelled() && steps.claude.outcome != 'skipped' }}
+        continue-on-error: true
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          EXECUTION_FILE="${EXECUTION_FILE:-$RUNNER_TEMP/claude-execution-output.json}"
+          if [ ! -f "$EXECUTION_FILE" ]; then
+            echo "No execution file at $EXECUTION_FILE."
+            exit 0
+          fi
+          jq -r '
+            .[]
+            | select(.type == "assistant")
+            | .message.content[]?
+            | select(.type == "tool_use")
+            | if .name == "Bash" then "Bash: \(.input.command)" else .name end
+          ' "$EXECUTION_FILE"
+          {
+            echo "## Аудит производительности: $AUDIT_MODE"
+            echo
+            jq -r '[.[] | select(.type == "result")] | last | .result // "Агент не вернул вердикт."' "$EXECUTION_FILE"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # A run without data is a failure, so it shows in the Actions tab. The
+      # agent has already recorded the no-data verdict in the log.
+      - name: Fail Without Data
+        if: ${{ !cancelled() && steps.summary.outputs.status != 'ok' }}
+        run: |
+          echo "No audit data: $(jq -r '.reason // "summary missing"' .audit/summary.json 2> /dev/null || echo 'summary missing')"
+          exit 1
