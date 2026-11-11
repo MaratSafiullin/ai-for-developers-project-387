@@ -37,11 +37,13 @@ jobs:
       statuses: read
 
     steps:
+      # The full history lets the reviewer read single commits of the pull
+      # request with `git show`, `git log` and `git diff`, not only the whole diff.
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Node
@@ -118,13 +120,18 @@ jobs:
             echo
             echo "You only read: do not try to change files, push, comment or approve. Your final answer is the review text; a separate job publishes it."
             echo
-            echo "Gather the context yourself:"
+            echo "Gather the context yourself. Before writing the review, run every command in this list: the description of the pull request is not a substitute for the issues, the commits or CI. If a command fails or is denied, say in the review which one and why, and do not draw conclusions that need its output."
             echo "- \`gh pr view $PR_NUMBER\`: the description with the links to the spec, the tickets and the approval."
             echo "- \`gh pr view $PR_NUMBER --comments\`: earlier comments, including earlier automatic reviews and replies to them."
             echo "- \`gh api repos/$REPO/pulls/$PR_NUMBER/comments --paginate\`: comments on diff lines and the replies to them."
             echo "- \`gh issue view <n> --json title,body,comments\` for every issue the description links: the spec or ticket text and the discussion where a human approved the work. Use exactly these JSON fields: the plain form also asks for project data the token cannot read. If a link is missing or does not open, say so in the review."
             echo "- \`gh pr diff $PR_NUMBER\`: the change itself. Read the surrounding code with Read, Glob and Grep."
+            echo "- \`git log --oneline $BASE_SHA..$HEAD_SHA\`: the commits of this pull request. The full history is checked out."
+            echo "- \`git show <sha>\`: the change of one commit. Judge a commit by its diff, not by its message."
+            echo "- \`git diff <reviewed-sha> $HEAD_SHA\`: everything pushed since an earlier automatic review. The heading of each earlier automatic review is the word Авторевью followed by the SHA of the commit it reviewed. When you check fixes for earlier findings, read this diff or the new commits with \`git show\`. If that SHA is missing from the history, for example after a force-push, say so and review the new commits from \`git log\`."
             echo "- \`gh pr checks $PR_NUMBER\` and \`gh run list --commit $HEAD_SHA\`: CI results. If they are missing or still running, say that CI results are not available yet and draw no conclusions from them."
+            echo
+            echo "Run each git command on its own, without \`;\`, \`&&\` or pipes into other commands: a call that combines it with a command outside the allowed set is denied."
             echo
             echo "When a command's output is too long, it is saved to a file and you get its path: open that file with the Read tool, not with Bash."
             echo
@@ -146,6 +153,11 @@ jobs:
       # nobody gives it, so it is denied. The scrub keeps the model key
       # out of the commands the model runs; the GitHub token is read-only.
       # `gh api` is allowed only for the diff line comments of this PR.
+      # `git show`, `git log` and `git diff` read the local history; the
+      # checkout keeps no credentials, so git cannot push. `--output` can
+      # still write a file into the checkout; the publish job reads only
+      # review/body.md and review/criteria-status.txt, which this step
+      # writes after the model.
       # --add-dir lets Read open long command output that the CLI saves under
       # ~/.claude/projects, outside the checkout. The
       # scrub turns on the Bash sandbox, which reaches only api.github.com and
@@ -169,7 +181,7 @@ jobs:
             --model claude-sonnet-5-5 \
             --add-dir "$HOME/.claude/projects" \
             --tools "Read,Glob,Grep,Bash" \
-            --allowedTools "Read,Glob,Grep,Bash(gh pr view *),Bash(gh pr diff *),Bash(gh pr checks *),Bash(gh issue view *),Bash(gh run list *),Bash(gh run view *),Bash(gh api repos/$GH_REPO/pulls/$PR_NUMBER/comments),Bash(gh api repos/$GH_REPO/pulls/$PR_NUMBER/comments *)" \
+            --allowedTools "Read,Glob,Grep,Bash(gh pr view *),Bash(gh pr diff *),Bash(gh pr checks *),Bash(gh issue view *),Bash(gh run list *),Bash(gh run view *),Bash(gh api repos/$GH_REPO/pulls/$PR_NUMBER/comments),Bash(gh api repos/$GH_REPO/pulls/$PR_NUMBER/comments *),Bash(git show *),Bash(git log *),Bash(git diff *)" \
             --disallowedTools "mcp__*" \
             --no-session-persistence \
             --output-format json \
