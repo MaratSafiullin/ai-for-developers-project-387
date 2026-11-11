@@ -120,7 +120,7 @@ jobs:
             echo
             echo "You only read: do not try to change files, push, comment or approve. Your final answer is the review text; a separate job publishes it."
             echo
-            echo "Gather the context yourself:"
+            echo "Gather the context yourself. Before writing the review, run every command in this list: the description of the pull request is not a substitute for the issues, the commits or CI. If a command fails or is denied, say in the review which one and why, and do not draw conclusions that need its output."
             echo "- \`gh pr view $PR_NUMBER\`: the description with the links to the spec, the tickets and the approval."
             echo "- \`gh pr view $PR_NUMBER --comments\`: earlier comments, including earlier automatic reviews and replies to them."
             echo "- \`gh api repos/$REPO/pulls/$PR_NUMBER/comments --paginate\`: comments on diff lines and the replies to them."
