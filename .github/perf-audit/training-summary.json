@@ -1,0 +1,43 @@
+{
+  "mode": "training",
+  "status": "ok",
+  "reason": null,
+  "url": "https://ai-for-developers-project-387-22vi.onrender.com",
+  "sha": "training-fixture",
+  "generated_at": null,
+  "pages": [
+    {
+      "path": "/",
+      "runs": 3,
+      "metrics": {
+        "lcp": 3400,
+        "cls": 0,
+        "tbt": 0
+      }
+    },
+    {
+      "path": "/book",
+      "runs": 3,
+      "metrics": {
+        "lcp": 1100,
+        "cls": 0.01,
+        "tbt": 0
+      }
+    }
+  ],
+  "findings": [
+    {
+      "key": "training/largest-contentful-paint",
+      "title": "Training finding: Largest Contentful Paint worse than the good threshold",
+      "description": "Prepared training data, not a measurement of the application. Median Largest Contentful Paint on the home page is above the good Core Web Vitals threshold of 2500 ms.",
+      "threshold": 2500,
+      "unit": "ms",
+      "pages": [
+        {
+          "path": "/",
+          "value": 3400
+        }
+      ]
+    }
+  ]
+}
