@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.2](https://github.com/MaratSafiullin/ai-for-developers-project-387/compare/v0.2.1...v0.2.2) (2026-11-12)
+
+
+### Documentation
+
+* описать отказ от сокращения неиспользуемого JS в рантайме ([#75](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/75)) ([492a700](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/492a70005ce92fc693029ee95f65a3a8c327e25f))
+* описать отказ от сокращения неиспользуемого JS в рантайме ([#75](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/75)) ([83428e0](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/83428e0fd00c99fe0f7b6d8ea756b3d3cf07f4bd))
+
 ## [0.2.1](https://github.com/MaratSafiullin/ai-for-developers-project-387/compare/v0.2.0...v0.2.1) (2026-11-12)
 
 
