@@ -25,6 +25,7 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Toaster } from '@/components/ui/sonner';
 
 export default function OwnerMeetingsIndex() {
     const { timezone } = usePage().props;
@@ -46,6 +47,7 @@ export default function OwnerMeetingsIndex() {
                     <UpcomingMeetingList />
                 </main>
             </AppLayout>
+            <Toaster />
         </>
     );
 }

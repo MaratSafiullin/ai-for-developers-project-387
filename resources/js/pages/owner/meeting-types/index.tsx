@@ -26,6 +26,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Toaster } from '@/components/ui/sonner';
 import { Textarea } from '@/components/ui/textarea';
 
 export default function OwnerMeetingTypesIndex() {
@@ -62,6 +63,7 @@ export default function OwnerMeetingTypesIndex() {
                     </section>
                 </main>
             </AppLayout>
+            <Toaster />
         </>
     );
 }
