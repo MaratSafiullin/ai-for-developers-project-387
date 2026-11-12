@@ -193,7 +193,7 @@ jobs:
             The same form works for `gh issue create --title '...' --label ... --body-file - <<'EOF'` and `gh issue comment N --body-file - <<'EOF'`. If a command is still denied, retry it once in this form before giving up, and report the denial in the final answer.
 
             Find audit issues with this exact command and nothing else, not `--search` and not a filter of your own: search splits keys on punctuation and may miss a just-created issue, and other filters may be denied.
-            gh issue list --state all --limit 1000 --json number,state,title,body --jq '[.[] | select(.body | contains("<!-- perf-audit"))]'
+            gh issue list --state all --limit 1000 --json number,state,title,body,labels,closedAt --jq '[.[] | select(.body | contains("<!-- perf-audit"))]'
             A finding issue carries the marker `<!-- perf-audit: KEY -->` in its body, the log issue carries `<!-- perf-audit-log -->`. Match a marker only by exact substring of the body, never by a similar title or a similar key. Use `gh issue view N --json ...` with explicit fields, never the plain form.
 
             ## Log issue
@@ -214,7 +214,7 @@ jobs:
             <!-- perf-audit-state live: verdict=... keys=... -->
             <!-- perf-audit-state training: verdict=... keys=... -->
 
-            The row of the current mode gets the date from `generated_at`, the run link, the checked URL, the verdict and links to the finding issues, with «(вернулась)» after an issue created this run for a finding that came back. Verdict is `findings`, `clean` or `no-data`; keys are the sorted finding keys joined by commas, empty unless the verdict is `findings`. A training run never touches the live row or the live state line, and a live run never touches the training ones.
+            The row of the current mode gets the date from `generated_at`, the run link, the checked URL, the verdict and links to the finding issues, with «(вернулась)» after an issue created this run for a finding that came back and «(отклонена)» after the closed issue of a rejected finding. Verdict is `findings`, `clean` or `no-data`; keys are the sorted finding keys joined by commas, empty unless the verdict is `findings`. A training run never touches the live row or the live state line, and a live run never touches the training ones.
 
             ## Steps
 
@@ -224,7 +224,8 @@ jobs:
                For an open issue, the last known values are those of its latest audit comment, or of its body when there is none: read them with `gh issue view N --json body,comments`.
                - an open issue exists and its pages and values match the last known ones: write nothing to it;
                - an open issue exists and the pages or values changed noticeably against the last known ones (a page added or gone, a metric or savings changed by more than about 20 percent, a score changed): post one comment with only the changes;
-               - only closed issues exist: the problem is back. Take the most recently closed one, run `gh issue view N --json number,title,closedByPullRequestsReferences` and create a new issue that links the closed issue and the pull request that closed it. If the list of closing pull requests is empty, write that the issue was closed without a pull request. If the command fails, write that the closing pull request could not be read and name the error. Never reopen the closed issue;
+               - only closed issues exist and the most recently closed one (latest `closedAt`) carries the label `wontfix`: the maintainer rejected this finding. Write nothing to any issue of this finding and create none. In the log row and in the final answer link that closed issue with «(отклонена)» after it;
+               - only closed issues exist and the most recently closed one has no `wontfix` label: the problem is back. Take that issue, run `gh issue view N --json number,title,closedByPullRequestsReferences` and create a new issue that links the closed issue and the pull request that closed it. If the list of closing pull requests is empty, write that the issue was closed without a pull request. If the command fails, write that the closing pull request could not be read and name the error. Never reopen the closed issue;
                - no issue exists: create a new issue.
                A new issue is created with `gh issue create` and the labels `needs-triage` and `performance`; in mode `training` also `training`. Its body has the problem in plain words, the pages with their values or scores, a suggested action, the checked URL and the `sha`, links to the run and to the log issue, and the marker `<!-- perf-audit: KEY -->` on the last line. In mode `training` the title starts with `[Учебный] ` and the first line of the body says: «Учебная находка из учебной сводки: это не подтверждённый дефект приложения.»
             4. Update the log issue body with `gh issue edit N --body-file - <<'EOF'` on every run, even when nothing else changed: the row and the state line of the current mode, with this run's link. Then compare the new verdict and keys with the previous state line of the same mode. Only if either changed, or this run created an issue for a finding that came back, post one comment to the log issue with the date, the run link, the URL, the verdict, and the findings that appeared, came back or went away, with links to their issues. In mode `training` the comment starts with «Учебный запуск, данные из учебной сводки.»
