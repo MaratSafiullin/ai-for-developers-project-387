@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.2.1](https://github.com/MaratSafiullin/ai-for-developers-project-387/compare/v0.2.0...v0.2.1) (2026-11-12)
+
+
+### Bug Fixes
+
+* **ci:** дать авторевью читать изменения отдельных коммитов PR ([#48](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/48)) ([4f68eab](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/4f68eabcba31b505664d09694901d65e13dda9c8))
+* **ci:** дать авторевью читать изменения отдельных коммитов PR ([#48](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/48)) ([3c6a64b](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/3c6a64b9bac0fa9911ba9b66adbeb9c6e829e249))
+* **ci:** требовать от авторевью выполнять все команды сбора контекста ([#48](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/48)) ([bbd06d4](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/bbd06d44b9d304f4a5b546bb3bcca69779ecb7bb))
+
+
+### Performance Improvements
+
+* не загружать код тостов и подсказок на гостевых страницах ([#66](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/66)) ([57c57ae](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/57c57ae2297766d5c3996b486af0eb42545ebfed))
+* не загружать код тостов и подсказок на гостевых страницах ([#66](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/66)) ([f8f41b1](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/f8f41b129b53253e12d5572b56314ba5569a8fb8))
+
+
+### Documentation
+
+* записать выводы о работе агентов ([#58](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/58)) ([2337d99](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/2337d997ec1224052269fb4ac7daeef79df6be86))
+* записать выводы о работе агентов ([#58](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/58)) ([10e733b](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/10e733b7172e26ff370dc2d27399c5e80ea3b279))
+* записать отказ от оптимизации сетевого пути страницы ([#64](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/64), [#65](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/65)) ([ed37030](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/ed37030a53cb92238cd1ba8cbf534ae9fd974b37))
+* записать отказ от оптимизации сетевого пути страницы ([#64](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/64), [#65](https://github.com/MaratSafiullin/ai-for-developers-project-387/issues/65)) ([1b16ed1](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/1b16ed18544008a5418dcfcc11de294043bfa73e))
+* описать в README отмену встречи владельцем ([1279626](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/1279626a5b0c2c40551dd960bd83e102bd3ca9f6))
+* описать в README отмену встречи владельцем ([13c39b1](https://github.com/MaratSafiullin/ai-for-developers-project-387/commit/13c39b140ba8d58ee1d1a3a539ee29e0cc58b312))
+
 ## [0.2.0](https://github.com/MaratSafiullin/ai-for-developers-project-387/compare/v0.1.2...v0.2.0) (2026-11-09)
 
 
